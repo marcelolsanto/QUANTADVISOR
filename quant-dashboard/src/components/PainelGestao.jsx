@@ -86,6 +86,10 @@ export default function PainelGestao({ usuarioId, isGestor }) {
     }
   }, [usuarioId, visaoMacro]);
 
+  useEffect(() => {
+    carregarDados();
+  }, [carregarDados]);
+
   const formatarBRL = (valor) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
   const formatarUSD = (valor) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(valor || 0);
 
