@@ -12,10 +12,10 @@ export default defineConfig({
         name: 'QuantAdvisor',
         short_name: 'QuantAdvisor',
         description: 'Hedge Fund Quantitativo e Inteligência Artificial',
-        theme_color: '#0f172a', 
-        background_color: '#0f172a', 
-        display: 'standalone', 
-        orientation: 'portrait', 
+        theme_color: '#0f172a',
+        background_color: '#0f172a',
+        display: 'standalone',
+        orientation: 'portrait',
         icons: [
           {
             src: 'android-chrome-192x192.png',
@@ -33,15 +33,15 @@ export default defineConfig({
     })
   ],
   server: {
-    host: true, 
-    allowedHosts: true, // Habilita todos os hosts no Vite 6+ (incluindo quantadvisor.com.br)
+    host: true,
+    allowedHosts: true,
     hmr: {
       clientPort: 443,
       protocol: 'wss',
     },
     watch: {
       usePolling: true,
-      interval: 1000,    
+      interval: 1000,
     },
     proxy: {
       '/api': {
