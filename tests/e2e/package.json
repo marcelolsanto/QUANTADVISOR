@@ -1,0 +1,12 @@
+{
+  "name": "quantadvisor-e2e-tests",
+  "version": "1.0.0",
+  "description": "Bateria de testes E2E com Playwright para QuantAdvisor",
+  "main": "dashboard.spec.js",
+  "scripts": {
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.51.0"
+  }
+}

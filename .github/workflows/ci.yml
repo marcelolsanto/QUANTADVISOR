@@ -1,0 +1,90 @@
+name: QuantAdvisor CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+
+jobs:
+  test-golang:
+    name: Golang Core Engine Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: coletor_go/go.sum
+
+      - name: Install Dependencies
+        run: |
+          cd coletor_go
+          go mod download
+
+      - name: Run Go Unit & Integration Tests
+        run: |
+          cd coletor_go
+          go test -v ./...
+
+      - name: Verify Go Build
+        run: |
+          cd coletor_go
+          go build -o quant_engine main.go
+
+  test-python:
+    name: Python AI & Math Engine Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: motor_python/requirements.txt
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r motor_python/requirements.txt
+          pip install pytest aiohttp requests
+
+      - name: Run Python Unit Tests
+        run: |
+          cd motor_python
+          python3 -m pytest tests/
+
+  lint-and-build-frontend:
+    name: React 19 Frontend Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: quant-dashboard/package-lock.json
+
+      - name: Install Dependencies
+        run: |
+          cd quant-dashboard
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd quant-dashboard
+          npm run lint
+
+      - name: Build Production PWA Bundle
+        run: |
+          cd quant-dashboard
+          npm run build

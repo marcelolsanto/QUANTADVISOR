@@ -1,0 +1,34 @@
+# Ignorar ambientes virtuais do Python
+# .dockerignore
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+.DS_Store
+*.db
+*.sqlite3
+
+# Ignorar dependências do Node.js (Frontend)
+quant-dashboard/node_modules/
+quant-dashboard/dist/
+
+# Ignorar pastas de Banco de Dados e Cache
+pg_data*/
+redis_data*/
+*.rdb
+
+# Ignorar logs e arquivos do Git
+*.log
+.git/
+.gitignore
+
+# Ignorar modelos de IA locais pesados (O Docker vai baixar/treinar os dele)
+motor_python/modelos_salvos/*.log

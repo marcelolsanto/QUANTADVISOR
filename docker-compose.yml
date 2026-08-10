@@ -1,0 +1,151 @@
+networks:
+  quant_network:
+    driver: bridge
+
+services:
+  # ⚡ 1. Banco em Memória Redis (Barramento Pub/Sub HFT)
+  redis:
+    image: redis:7-alpine
+    container_name: quant_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      quant_network:
+        aliases:
+          - quant_redis
+          - redis
+    volumes:
+      - redis_data_v4:/data
+
+  # 🐍 2. Motor Python IA (Cérebro Quantitativo & Cointegração)
+  quant_motor_python:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    container_name: quant_motor_python
+    restart: unless-stopped
+    working_dir: /workspace/motor_python
+    command: python3 -m uvicorn api:app --host 0.0.0.0 --port 8000 --workers 4
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - TZ=America/Sao_Paulo
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - .:/workspace
+    networks:
+      quant_network:
+        aliases:
+          - motor_python
+          - quant_motor_python
+    depends_on:
+      - redis
+      - db
+
+  # 🐹 3. Backend Coletor Go (Executor TWAP & Gateways HFT)
+  quant_coletor_go:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      network: host
+    container_name: quant_coletor_go
+    restart: unless-stopped
+    working_dir: /workspace/coletor_go
+    command: /bin/sh -c "export GOTOOLCHAIN=local && go mod tidy && go build -o quant_engine . && ./quant_engine"
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - TZ=America/Sao_Paulo
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-devdb}
+      - DB_USER=${DB_USER:-devuser}
+      - DB_PASSWORD=${DB_PASSWORD:-devpassword}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-quantadvisor_master_key_2026}
+      - PYTHON_ENGINE_URL=http://quant_motor_python:8000
+      - GO_ENGINE_URL=http://quant_coletor_go:8080
+    volumes:
+      - .:/workspace
+    networks:
+      quant_network:
+        aliases:
+          - coletor_go
+          - quant_coletor_go
+    depends_on:
+      - redis
+      - db
+      - quant_motor_python
+
+  # 🖥️ 4. Painel Frontend React + TypeScript (`quant-dashboard`)
+  quant_dashboard:
+    image: node:20-alpine
+    container_name: quant_dashboard
+    restart: unless-stopped
+    working_dir: /workspace/quant-dashboard
+    volumes:
+      - .:/workspace
+    command: /bin/sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    networks:
+      quant_network:
+        aliases:
+          - quant_dashboard
+          - quant-dashboard
+    depends_on:
+      - quant_coletor_go
+
+  # 🔒 5. Proxy Reverso SSL/TLS (Nginx)
+  quant_proxy:
+    image: nginx:alpine
+    container_name: quant_nginx_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - quant_network
+    depends_on:
+      - quant_coletor_go
+      - quant_motor_python
+      - quant_dashboard
+
+  # 🗄️ 6. Banco de Dados PostgreSQL
+  db:
+    image: postgres:15-alpine
+    container_name: quantadvisor_pg
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=${DB_NAME:-devdb}
+      - POSTGRES_USER=${DB_USER:-devuser}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-devpassword}
+      - TZ=America/Sao_Paulo
+    ports:
+      - "5432:5432"
+    networks:
+      quant_network:
+        aliases:
+          - db
+          - quantadvisor_pg
+    volumes:
+      - pg_data_v4:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pg_data_v4:
+  redis_data_v4:
+  python_models_v1:

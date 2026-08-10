@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Roboto+Mono:wght@400;700&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a;
+  color: #f8fafc;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+
+  overscroll-behavior-y: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+input,
+textarea,
+select {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Customização da Barra de Rolagem Ultra Discreta */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #273549;
+  border-radius: 20px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #334155;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #273549 transparent;
+}
+
+/* ========================================================
+   ✨ GLASSMORPHISM & TRANSIÇÕES ULTRA-SUAVES (UX PREMIUM)
+.glass-card {
+  background: rgba(30, 41, 59, 0.7) !important;
+  backdrop-filter: blur(12px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37) !important;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease !important;
+}
+
+.glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45) !important;
+}
+
+button, a, input, select {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active {
+  transform: scale(0.97);
+}
+
+/* ========================================================
+   ✨ SKELETON SHIMMER ANIMATION KEYFRAMES
+@keyframes shimmerAnimation {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(30, 41, 59, 0.6) 25%,
+    rgba(51, 65, 85, 0.8) 50%,
+    rgba(30, 41, 59, 0.6) 75%
+  ) !important;
+  background-size: 200% 100% !important;
+  animation: shimmerAnimation 1.8s infinite linear !important;
+
+
+  /* ========================================================
+   📱 RESPONSIVIDADE & OTIMIZAÇÃO TÁTIL MOBILE (Moto G73 / iOS)
+  @media (max-width: 768px) {
+  .mobile-container {
+    padding: 15px !important;
+  }
+
+  .mobile-nav {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 5px;
+    justify-content: flex-start !important;
+  }
+
+  .mobile-stack {
+    flex-direction: column !important;
+    width: 100% !important;
+  }
+
+  .mobile-card {
+    min-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  h2 { font-size: 1.4rem !important; }
+  h3 { font-size: 1.1rem !important; }
+
+  .mobile-hide-text {
+    display: none !important;
+  }
+
+  /* Target Tátil Mínimo Confortável de 48px para Celular */
+button,
+.touch-target,
+select {
+  min-height: 48px !important;
+  min-width: 48px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

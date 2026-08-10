@@ -1,0 +1,72 @@
+# ==============================================================================
+# GITIGNORE - QUANTADVISOR WEALTHTECH
+# ==============================================================================
+
+# Variáveis de ambiente & Segredos
+.env
+.env.local
+.env.production
+.env.staging
+*.pem
+*.key
+*.crt
+
+# Ficheiros de Log & Auditoria
+*.log
+auditoria_ingestao.log
+auditoria_matematica.log
+
+# Node.js & Frontend Build (quant-dashboard)
+node_modules/
+quant-dashboard/node_modules/
+quant-dashboard/dist/
+quant-dashboard/dist-ssr/
+tests/e2e/node_modules/
+tests/e2e/test-results/
+tests/e2e/playwright-report/
+*.tsbuildinfo
+
+# Python & Cache de Aprendizado de Máquina (motor_python)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+motor_python/__pycache__/
+motor_python/models/*.pt
+motor_python/models/*.pth
+
+# Golang Executáveis, Binários & Temp
+coletor_go/quant_engine
+coletor_go/extrator
+*.exe
+*.exe?
+*.dll
+*.so
+*.dylib
+*.save
+coletor_go/internal/database/*.save
+
+# SSL Certs locais do Nginx
+nginx/ssl/*.pem
+nginx/ssl/*.crt
+nginx/ssl/*.key
+
+# Dumps de Banco de Dados, PDFs & Arquivos Grandes de Backup
+dump.rdb
+init.sql
+*.pdf
+codigo_*.txt
+
+# IDEs & Sistema Operacional
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker / Temporal
+pg_data/
+redis_data/

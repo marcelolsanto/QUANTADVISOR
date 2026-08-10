@@ -1,0 +1,30 @@
+# ==============================================================================
+# AZURE DEVOPS PIPELINE DE CI/CD - QUANTADVISOR WEALTHTECH
+# ==============================================================================
+trigger:
+  branches:
+    include:
+      - main
+      - master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - group: quantadvisor-azure-secrets # Mapeado no Azure Key Vault
+
+steps:
+- task: DockerCompose@0
+  displayName: 'Build dos Containers QuantAdvisor'
+  inputs:
+    containerregistrytype: 'Container Registry'
+    dockerComposeFile: 'docker-compose.yml'
+    action: 'Build services'
+
+- script: |
+    cd quant-dashboard && npm ci && npm run build
+  displayName: 'Validar Build do Frontend React (Vite)'
+
+- script: |
+    cd coletor_go && go test ./...
+  displayName: 'Executar Testes Unitários no Core Golang'

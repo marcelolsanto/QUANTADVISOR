@@ -1,0 +1,1095 @@
+basePath: /api
+definitions:
+  handlers.BuyingPowerResponse:
+    properties:
+      buying_power:
+        type: number
+      currency:
+        type: string
+      timestamp:
+        type: string
+    type: object
+  handlers.ParametrosOperacionais:
+    properties:
+      bloqueio_sentimento_negativo:
+        type: boolean
+      custo_friccao_padrao:
+        type: number
+      gatilho_rebalanceamento:
+        type: number
+      limite_concentracao_ativo:
+        type: number
+      modo_isencao_fiscal_estrita:
+        type: boolean
+      multiplicador_kelly:
+        type: number
+      multiplicador_stop_var:
+        type: number
+      piso_max_drawdown:
+        type: number
+      usuario_id:
+        type: integer
+      z_score_compra_forte:
+        type: number
+      z_score_stop_loss:
+        description: "\U0001F448 NOVO"
+        type: number
+      z_score_venda_lucro:
+        description: "\U0001F448 NOVO"
+        type: number
+    type: object
+  handlers.SignalHFTResponse:
+    properties:
+      action:
+        type: string
+      asset_a:
+        type: string
+      asset_b:
+        type: string
+      price:
+        type: number
+      strategy:
+        type: string
+      target_qty:
+        type: number
+      timestamp:
+        type: string
+    type: object
+  handlers.TWAPExecutionResponse:
+    properties:
+      order_id:
+        type: string
+      price:
+        type: number
+      qty:
+        type: number
+      side:
+        type: string
+      slice_index:
+        type: integer
+      status:
+        type: string
+      symbol:
+        type: string
+      timestamp:
+        type: string
+      total_slices:
+        type: integer
+    type: object
+  models.CarrinhoItem:
+    properties:
+      id:
+        type: integer
+      preco:
+        type: number
+      quantidade:
+        type: integer
+      ticker:
+        type: string
+      tipo:
+        type: string
+    type: object
+  models.DeletarContaRequest:
+    properties:
+      id:
+        type: integer
+    type: object
+  models.EditarContaRequest:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      login:
+        type: string
+      nome_cliente:
+        type: string
+      perfil_risco:
+        type: string
+      piloto_automatico:
+        type: boolean
+      role:
+        description: ✨ AGORA ELE LÊ A ROLE
+        type: string
+      saldo_inicial:
+        type: number
+      saldo_usd:
+        type: number
+      senha:
+        type: string
+      whatsapp:
+        type: string
+    type: object
+  models.ItemLancamento:
+    properties:
+      conta_credito:
+        type: string
+      conta_debito:
+        type: string
+      data_lancamento:
+        type: string
+      data_liquidacao:
+        type: string
+      historico:
+        type: string
+      id:
+        type: integer
+      valor:
+        type: number
+    type: object
+  models.LimparCarrinhoReq:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  models.LoginRequest:
+    properties:
+      login:
+        type: string
+      senha:
+        type: string
+    type: object
+  models.LoginResponse:
+    properties:
+      erro:
+        type: string
+      nome:
+        type: string
+      role:
+        type: string
+      sucesso:
+        type: boolean
+      token:
+        type: string
+      usuario_id:
+        type: integer
+    type: object
+  models.LoteFiscal:
+    properties:
+      custos_b3:
+        type: number
+      data_entrada:
+        type: string
+      id:
+        type: integer
+      preco_compra:
+        type: number
+      quantidade_atual:
+        type: integer
+      quantidade_inicial:
+        type: integer
+      ticker:
+        type: string
+      usuario_id:
+        type: integer
+    type: object
+  models.NovaContaRequest:
+    properties:
+      email:
+        type: string
+      login:
+        type: string
+      nome_cliente:
+        type: string
+      perfil_risco:
+        type: string
+      piloto_automatico:
+        type: boolean
+      role:
+        description: ✨ AGORA ELE LÊ A ROLE
+        type: string
+      saldo_inicial:
+        type: number
+      saldo_usd:
+        type: number
+      senha:
+        type: string
+      whatsapp:
+        type: string
+    type: object
+  models.OrdemRequest:
+    properties:
+      moeda:
+        type: string
+      preco:
+        type: number
+      quantidade:
+        type: integer
+      taxa_cambio_momento:
+        type: number
+      ticker:
+        type: string
+      tipo_ordem:
+        type: string
+      usuario_id:
+        type: integer
+      volume_brl:
+        type: number
+    type: object
+  models.PerfilInvestidor:
+    properties:
+      id:
+        type: integer
+      nome_usuario:
+        type: string
+      perfil_comportamental:
+        type: string
+    type: object
+  models.PontoHistorico:
+    properties:
+      data:
+        type: string
+      patrimonio:
+        type: number
+    type: object
+  models.ResumoDashboard:
+    properties:
+      caixa_livre:
+        type: number
+      custo_aquisicao:
+        type: number
+      patrimonio_total:
+        type: number
+    type: object
+  models.TogglePilotoReq:
+    properties:
+      estado:
+        type: boolean
+      usuario_id:
+        type: integer
+    type: object
+  models.UsuarioResumo:
+    properties:
+      data_cadastro:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      login:
+        type: string
+      lucro_acumulado:
+        type: number
+      nome:
+        type: string
+      perfil_risco:
+        type: string
+      piloto_automatico:
+        type: boolean
+      role:
+        type: string
+      saldo_brl:
+        type: number
+      saldo_usd:
+        type: number
+      whatsapp:
+        type: string
+    type: object
+host: 100.95.28.45:8080
+info:
+  contact: {}
+  description: Motor de Ingestão e Gestão Patrimonial.
+  title: QuantAdvisor API
+  version: "1.0"
+paths:
+  /adicionar-carrinho:
+    post:
+      consumes:
+      - application/json
+      description: Intercepta ordens sugeridas pela inteligência artificial ou agendadas
+        pelo usuário fora do horário de pregão. Em vez de liquidar a transação na
+        B3, persiste os metadados da ordem em estado 'PENDENTE' na fila do Carrinho
+        Noturno.
+      parameters:
+      - description: Dados
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrdemRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Adicionar Carrinho
+      tags:
+      - Carrinho
+  /agente/causalidade:
+    post:
+      consumes:
+      - application/json
+      description: Encaminha prompts de raciocínio lógico financeiro para a IA Generativa
+        (LLM). O modelo cruza os logs internos do motor estatístico com os dados macroeconômicos
+        do mercado para explicar as decisões da rede neural de forma didática.
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Agente Causalidade
+      tags:
+      - IA
+  /ativo/detalhes:
+    get:
+      description: Puxa o histórico de preços, fundamentos e estado da IA diretamente
+        da RAM.
+      responses: {}
+      summary: Detalhes do Ativo (Raio-X)
+  /auditoria:
+    get:
+      description: Amostra a temperatura do mercado financeiro em tempo real. Consulta
+        a base 'In-Memory' (Redis SET) para consolidar recomendações atômicas de Z-Score,
+        Risco de Variância e Sinais de Inteligência Artificial para todos os ativos
+        em monitoramento.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Auditoria de Mercado
+      tags:
+      - Sistema
+  /backtest:
+    get:
+      description: Atua como um API Gateway para o motor Python. Transfere a solicitação
+        de backtesting retrospectivo do ativo escolhido, onde o algoritmo de inteligência
+        artificial (VectorBT) simula a estratégia em dados históricos reais para validar
+        o Índice de Sharpe e Drawdown.
+      parameters:
+      - description: Ticker do ativo
+        in: query
+        name: ticker
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Backtest
+      tags:
+      - IA
+  /cambio:
+    post:
+      consumes:
+      - application/json
+      description: Executa a conversão entre BRL e USD aplicando Spread e IOF.
+      produces:
+      - application/json
+      responses: {}
+      security:
+      - BearerAuth: []
+      summary: Realizar Câmbio (Remessa Internacional)
+      tags:
+      - Operações
+  /carrinho:
+    get:
+      description: Retorna o pool de ordens 'PENDENTES' aguardando execução na abertura
+        do próximo pregão. Utilizado pelo robô despertador e pelo painel do usuário
+        para visualização prévia da intenção de rebalanceamento.
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CarrinhoItem'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar Carrinho
+      tags:
+      - Carrinho
+  /carrinho/limpar:
+    post:
+      consumes:
+      - application/json
+      description: Processa a limpeza e rejeição explícita de ordens. Remove em lote
+        (Batch Delete) registros específicos do Carrinho Noturno, abortando sugestões
+        geradas pela IA que o cliente ou o Gestor decidiram não acatar.
+      parameters:
+      - description: IDs para deletar
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LimparCarrinhoReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Limpar Carrinho
+      tags:
+      - Carrinho
+  /carteira:
+    get:
+      description: Agrega e retorna a custódia patrimonial atual do usuário, com filtro
+        estrito de Jurisdição (Moeda).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Resumo da Carteira
+      tags:
+      - Operações
+  /compliance/lancamentos:
+    get:
+      description: Acesso ao Livro Diário do sistema (Compliance). Retorna todos os
+        lançamentos contábeis gerados nas operações do cliente, refletindo os lançamentos
+        de débito e crédito no formato de partidas dobradas e suas respectivas datas
+        de liquidação na B3 (D+2).
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ItemLancamento'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar Lancamentos
+      tags:
+      - Compliance
+  /compliance/lotes:
+    get:
+      description: Acesso ao módulo fiscal de custódia (FIFO). Retorna os lotes granulares
+        de ações compradas pelo cliente, essenciais para a Inteligência Artificial
+        e a Tesouraria calcularem com precisão os preços de aquisição, isenções tributárias
+        e o custo marginal de cada cota.
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.LoteFiscal'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar Lotes
+      tags:
+      - Compliance
+  /compliance/resumo-fiscal:
+    get:
+      description: Executa a Malha Fina fiscal completa separando jurisdições (B3
+        e Exterior).
+      responses: {}
+      summary: Resumo Fiscal
+      tags:
+      - Compliance
+  /dashboard/historico:
+    get:
+      description: Retorna os pontos de dados dos últimos 30 dias, mais o estado "Ao
+        Vivo", para desenhar o gráfico de linha.
+      parameters:
+      - description: ID do Utilizador
+        in: query
+        name: usuario_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PontoHistorico'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Histórico de Evolução Patrimonial
+      tags:
+      - Dashboard
+  /dashboard/historico-ativos:
+    get:
+      description: Retorna os dados dos últimos 30 dias separados por ticker, formatados
+        diretamente para consumo no Recharts (React).
+      parameters:
+      - description: ID do Utilizador
+        in: query
+        name: usuario_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Histórico de Ativos (Gráfico de Barras/Área)
+      tags:
+      - Dashboard
+  /dashboard/macro:
+    get:
+      description: |-
+        Exclusivo para Gestores. Retorna o AUM total (Assets Under Management), caixa global e evolução consolidada de todos os clientes vinculados.
+        Exclusivo para Gestores. Retorna o AUM total (Assets Under Management), caixa global e evolução consolidada de todos os clientes vinculados.
+      produces:
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      - BearerAuth: []
+      summary: Visão Macro (AUM)
+      tags:
+      - Dashboard
+      - Dashboard
+  /dashboard/resumo:
+    get:
+      description: Retorna o caixa livre, custo de aquisição e património total do
+        utilizador para alimentar os cartões de topo.
+      parameters:
+      - description: ID do Utilizador
+        in: query
+        name: usuario_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ResumoDashboard'
+      security:
+      - BearerAuth: []
+      summary: Resumo do Dashboard (KPIs)
+      tags:
+      - Dashboard
+  /hft/signals:
+    get:
+      description: Retorna a lista de sinais quantitativos emitidos pelo motor Python
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.SignalHFTResponse'
+            type: array
+      summary: Listar Sinais HFT
+      tags:
+      - Wallet & HFT
+  /hft/twap-history:
+    get:
+      description: Retorna o registro de fatias de ordens executadas pelo TWAP Engine
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.TWAPExecutionResponse'
+            type: array
+      summary: Histórico de Execuções TWAP
+      tags:
+      - Wallet & HFT
+  /historico:
+    get:
+      description: Gera o extrato de movimentação financeira. Lista todas as ordens
+        (Compra e Venda) já liquidadas e registradas para o usuário, ordenadas cronologicamente.
+        Base para a auditoria temporal e relatórios de fluxo de caixa.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Histórico de Ordens
+      tags:
+      - Operações
+  /ingestao/iniciar:
+    post:
+      description: Dispara manualmente a esteira de processamento concorrente do QuantAdvisor.
+        O Go inicia de forma assíncrona o download em lote de séries temporais (YAHOO/BRAPI)
+        e delega a calibragem matemática e estatística ao motor Python no background.
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Iniciar Ingestão Manual
+      tags:
+      - Sistema
+  /institucional/curva-capital:
+    get:
+      description: Retorna a evolução patrimonial e a volatilidade do mercado para
+        o Tearsheet.
+      parameters:
+      - description: ID do Usuário
+        in: query
+        name: usuario_id
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Curva de Capital
+      tags:
+      - 6. Institucional (B2B)
+  /institucional/replay:
+    get:
+      description: Retorna os logs de auditoria imutáveis (Z-Score, Kelly, Fricção)
+        do robô.
+      parameters:
+      - description: ID do Usuário
+        in: query
+        name: usuario_id
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Replay de Decisão da IA
+      tags:
+      - 6. Institucional (B2B)
+  /institucional/resumo:
+    get:
+      description: Retorna métricas B2B de performance (AUM, Sharpe, Drawdown).
+      parameters:
+      - description: ID do Usuário
+        in: query
+        name: usuario_id
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Resumo Institucional (Tearsheet)
+      tags:
+      - 6. Institucional (B2B)
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Ponto de entrada do sistema de segurança.
+      parameters:
+      - description: Credenciais
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LoginResponse'
+      summary: Login
+      tags:
+      - Auth
+  /ml/prever:
+    post:
+      consumes:
+      - application/json
+      description: Dispara a inferência da Rede Neural Recorrente (Long Short-Term
+        Memory). Utilizando a arquitetura 'Shared Bus', envia apenas um sinal (Trigger)
+        para o Python ler a série temporal na RAM (Redis) e devolver a projeção algorítmica
+        do preço D+1 do ativo.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Prever LSTM
+      tags:
+      - IA
+  /montecarlo:
+    get:
+      description: Atua como API Gateway. Delega ao motor Python o cálculo de projeções
+        estocásticas utilizando o modelo matemático Merton Jump-Diffusion, desenhando
+        milhares de trajetórias de preços futuras (Gaps de Poisson e Movimentos Brownianos)
+        e extraindo os percentis 5%, 50% e 95%.
+      parameters:
+      - description: Ticker
+        in: query
+        name: ticker
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Monte Carlo
+      tags:
+      - IA
+  /ordem:
+    post:
+      consumes:
+      - application/json
+      description: Motor atômico de roteamento e liquidação. Executa as validações
+        de saldo, recalcula o preço médio da custódia, avalia regras fiscais complexas
+        (Isenção de 20k, limites de SWING/DAY TRADE), lança partidas dobradas e efetiva
+        a mutação patrimonial na base relacional separando ativos BRL e USD.
+      parameters:
+      - description: Dados da Ordem
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrdemRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Enviar Ordem
+      tags:
+      - Operações
+  /otimizar:
+    post:
+      description: Rebalanceamento quantitativo separado por Jurisdição. Não mistura
+        BRL com USD.
+      responses: {}
+      summary: Otimizar Carteira (HRP + NLP) Isolada por Moeda
+      tags:
+      - IA
+  /parametros:
+    get:
+      description: Retorna as configurações de Z-Score, Kelly e Travas de Risco do
+        robô.
+      parameters:
+      - description: ID do Usuário
+        in: query
+        name: usuario_id
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.ParametrosOperacionais'
+      security:
+      - BearerAuth: []
+      summary: Obter Parâmetros de Risco
+      tags:
+      - 8. Parâmetros e Configurações
+    post:
+      consumes:
+      - application/json
+      description: Atualiza a sensibilidade e os limites de segurança da Inteligência
+        Artificial.
+      parameters:
+      - description: Parâmetros
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.ParametrosOperacionais'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Salvar Parâmetros de Risco
+      tags:
+      - 8. Parâmetros e Configurações
+  /perfis:
+    get:
+      description: 'Fornece a lista de perfis de investidor comportamentais parametrizados
+        no banco de dados (ex: Conservador, Moderado, Arrojado). Estes perfis definem
+        os limites de tolerância ao risco utilizados nos cálculos do Critério de Kelly
+        e da IA.'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PerfilInvestidor'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar Perfis
+      tags:
+      - Usuários
+  /piloto/toggle:
+    post:
+      consumes:
+      - application/json
+      description: Habilita ou desabilita a execução autônoma de ordens pelo robô
+        de rebalanceamento.
+      parameters:
+      - description: Dados do Toggle
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.TogglePilotoReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Toggle Piloto Automático
+      tags:
+      - Operações
+  /portfolio/projecao:
+    get:
+      description: Calcula a expectativa de crescimento de longo prazo do patrimônio
+        do cliente em diferentes veículos (Renda Fixa e Variável). Combina os retornos
+        históricos reais da carteira de ações com as curvas de juros atuais da B3
+        (Selic, IPCA+, CDBs), descontando a inflação (Efeito Fisher) e impostos.
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Projeção
+      tags:
+      - IA
+  /risco:
+    get:
+      description: Atua como API Gateway. Delega ao motor Python a construção dinâmica
+        de uma matriz de correlação cruzada (Pearson) de todos os ativos da carteira
+        em tempo real, detectando excesso de concentração de risco ou sugerindo ativos
+        descorrelacionados (Hedge).
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Risco Sistemico
+      tags:
+      - IA
+  /stream/mercado:
+    get:
+      description: Estabelece um túnel SSE (Server-Sent Events) unidirecional e persistente.
+        O orquestrador Go assina os eventos de mercado no Redis (Pub/Sub) e repassa
+        os 'ticks' de cotação em tempo real e baixa latência diretamente para os painéis
+        do Frontend, dispensando WebSockets pesados.
+      responses: {}
+      summary: Stream de Cotações (Tempo Real)
+      tags:
+      - Sistema
+  /usuario:
+    get:
+      description: Endpoint simplificado que retorna informações cruciais de contato
+        (Nome, Email, Telefone) de uma conta específica. Utilizado principalmente
+        pelas interfaces administrativas de CRM do Gestor.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UsuarioResumo'
+      security:
+      - BearerAuth: []
+      summary: Info Usuário
+      tags:
+      - Usuários
+  /usuarios:
+    get:
+      description: Retorna o diretório de contas virtuais cadastradas. Implementa
+        controle de acesso (RBAC).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.UsuarioResumo'
+            type: array
+      security:
+      - BearerAuth: []
+      summary: Listar Usuários
+      tags:
+      - Usuários
+  /usuarios/criar:
+    post:
+      consumes:
+      - application/json
+      description: Aloca uma nova 'Conta Virtual' no ecossistema transacional. Associa
+        o cliente a um Perfil de Risco e credita o saldo simulado inicial. Estabelece
+        a estrutura fundamental para a custódia de ativos e livros de registros diários.
+      parameters:
+      - description: Dados do novo cliente
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.NovaContaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Criar Conta
+      tags:
+      - Usuários
+  /usuarios/deletar:
+    post:
+      consumes:
+      - application/json
+      description: Remove irrevogavelmente uma conta do ecossistema. Executa deleção
+        em cascata (Cascade Delete) das posições em custódia na tabela 'posicoes_carteira'
+        antes de remover a 'conta_virtual', assegurando a integridade relacional do
+        banco. Exclusivo para Gestores.
+      parameters:
+      - description: ID do usuário
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.DeletarContaRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Deletar Conta
+      tags:
+      - Usuários
+  /usuarios/editar:
+    post:
+      consumes:
+      - application/json
+      description: Modifica os metadados cadastrais e o perfil de risco de uma conta
+        existente. O sistema avalia dinamicamente se a senha foi fornecida; caso omitida,
+        o update ocorre de forma parcial, preservando a credencial anterior. Acesso
+        restrito via JWT.
+      parameters:
+      - description: Dados da conta
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.EditarContaRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Editar Conta
+      tags:
+      - Usuários
+  /usuarios/solicitar-cadastro:
+    post:
+      description: Inicia o fluxo de Onboarding Seguro (KYC). Valida colisões de login/email
+        na base de dados, gera um OTP (One-Time Password) criptograficamente seguro
+        e aciona um worker assíncrono para despachar a chave temporária via SMS/WhatsApp
+        usando a API Twilio.
+      responses: {}
+      summary: Solicitar Cadastro (Passo 1)
+  /usuarios/validar-cadastro:
+    post:
+      description: Conclui a aprovação de Onboarding. Verifica o código OTP em tempo
+        real contra o cache transiente do Redis. Após o aceite, extrai os metadados
+        persistidos provisoriamente e grava a conta virtual de forma permanente e
+        atômica no PostgreSQL.
+      responses: {}
+      summary: Validar Código e Criar Conta (Passo 2)
+  /wallet/buying-power:
+    get:
+      description: Retorna o limite de margem e poder de compra atualizado via feedback
+        loop Redis Alpaca/BTG
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.BuyingPowerResponse'
+      summary: Buscar Poder de Compra (Buying Power)
+      tags:
+      - Wallet & HFT
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

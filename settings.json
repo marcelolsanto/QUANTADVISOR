@@ -1,0 +1,31 @@
+{
+    "r.lsp.promptToInstall": false,
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "host.docker.internal",
+            "port": 5432,
+            "askForPassword": true,
+            "driver": "PostgreSQL",
+            "database": "saeb_pibic",
+            "name": "pibicDB",
+            "username": "postgres"
+        },
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "db",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "password": "devpassword",
+            "username": "devuser",
+            "database": "devdb",
+            "name": "quantadvisor_pg"
+        }
+    ],
+    "python.analysis.extraPaths": [
+        "./motor_python" 
+    ],
+    "postman.settings.dotenv-detection-notification-visibility": false
+}
