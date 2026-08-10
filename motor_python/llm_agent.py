@@ -1,11 +1,17 @@
 import os
 import json
 from groq import Groq
-from collections import deque # 🌟 SOLUÇÃO 3: Estrutura de dados ideal para streaming de buffers de cauda
-
-client = Groq(api_key="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")
+from collections import deque
 
 def consultar_cro_sintetico(cenario_macro):
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    if not groq_api_key:
+        return {
+            "sucesso": False,
+            "erro": "GROQ_API_KEY não configurada no arquivo .env. Configure GROQ_API_KEY para habilitar a IA CRO."
+        }
+
+    client = Groq(api_key=groq_api_key)
     caminho_log = os.path.join(os.path.dirname(__file__), 'auditoria_matematica.log')
     try:
         # 🌟 SOLUÇÃO 3: deque evita f.readlines() convencional que estoura a RAM em logs gigantes
