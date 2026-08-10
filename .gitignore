@@ -58,6 +58,7 @@ dump.rdb
 init.sql
 *.pdf
 codigo_*.txt
+321456/
 
 # IDEs & Sistema Operacional
 .DS_Store
