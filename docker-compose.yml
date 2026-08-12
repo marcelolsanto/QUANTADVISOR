@@ -147,30 +147,7 @@ services:
       - pg_data_v4:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
-  # 🤖 7. IDE Android Studio Web (KasmVNC HTML5)
-  quant_android_studio:
-    image: lscr.io/linuxserver/webtop:ubuntu-xfce
-    container_name: quant_android_studio
-    restart: unless-stopped
-    security_opt:
-      - seccomp:unconfined
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=America/Sao_Paulo
-      - SUBFOLDER=/studio/
-    volumes:
-      - .:/workspace
-      - android_studio_config:/config
-    ports:
-      - "3001:3000"
-    networks:
-      quant_network:
-        aliases:
-          - quant_android_studio
-
 volumes:
   pg_data_v4:
   redis_data_v4:
   python_models_v1:
-  android_studio_config:
