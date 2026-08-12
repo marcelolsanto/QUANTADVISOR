@@ -788,29 +788,29 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 		patrimonioTotal := saldoGlobal + valorTotalCustodia
 
 		// =========================================================================
-		// 🛡️ O FREIO DE MÃO DEFINITIVO (CIRCUIT BREAKER GLOBAL)
+		// 🛡️ O FREIO DE MÃO DEFINITIVO (CIRCUIT BREAKER GLOBAL & HIGH WATER MARK)
 		// =========================================================================
-		var pisoMaxDrawdown float64 = -0.05
+		var pisoMaxDrawdown float64 = -0.15
 		_ = database.Conn.QueryRow("SELECT piso_max_drawdown FROM parametros_operacionais WHERE usuario_id = $1", usuarioID).Scan(&pisoMaxDrawdown)
 
 		var lucroAcumulado float64
 		_ = database.Conn.QueryRow("SELECT lucro_acumulado FROM contas_virtuais WHERE usuario_id = $1", usuarioID).Scan(&lucroAcumulado)
 
-		// O "patrimonioTotal" atual no código usa o preco_medio, então ele representa o CUSTO BASE (Investimento Inicial)
-		investimentoBase := patrimonioTotal - lucroAcumulado 
-		if investimentoBase <= 0 { investimentoBase = 1000.0 }
-
-		// Para saber se estamos perdendo dinheiro agora, vamos pegar o último patrimônio marcado a mercado da fotografia diária
 		var ultimoPatrimonioMarcado float64
 		_ = database.Conn.QueryRow("SELECT patrimonio_total FROM historico_patrimonial WHERE usuario_id = $1 ORDER BY data_fechamento DESC LIMIT 1", usuarioID).Scan(&ultimoPatrimonioMarcado)
 
-		if ultimoPatrimonioMarcado > 0 {
-			drawdownAtual := (ultimoPatrimonioMarcado / investimentoBase) - 1.0
+		// Sincronização Dinâmica da High Water Mark: aportes elevam a marca d'água base
+		if patrimonioTotal > ultimoPatrimonioMarcado {
+			ultimoPatrimonioMarcado = patrimonioTotal
+		}
 
-			if pyResp.Sinal == "COMPRA FORTE" && drawdownAtual <= pisoMaxDrawdown {
-				pyResp.Sinal = "NEUTRO"
-				log.Printf("🛑 [CIRCUIT BREAKER GLOBAL] Compra de %s VETADA para User %d. O Patrimônio caiu %.2f%% (Limite: %.2f%%). Conta travada para proteção de capital.", pyResp.Ticker, usuarioID, drawdownAtual*100, pisoMaxDrawdown*100)
-				continue // 👈 Isso corta a execução aqui, ignorando o restante da lógica de compra.
+		if ultimoPatrimonioMarcado > 0 && patrimonioTotal > 0 {
+			drawdownAtual := (patrimonioTotal / ultimoPatrimonioMarcado) - 1.0
+
+			if sinalExecucao == "COMPRA FORTE" && drawdownAtual <= pisoMaxDrawdown {
+				sinalExecucao = "NEUTRO"
+				log.Printf("🛑 [CIRCUIT BREAKER GLOBAL] Ordem de COMPRA em %s VETADA para User %d. Drawdown de %.2f%% atingiu o limite de %.2f%%. Recomendação visual %s mantida.", pyResp.Ticker, usuarioID, drawdownAtual*100, pisoMaxDrawdown*100, pyResp.Sinal)
+				continue
 			}
 		}
 		// =========================================================================
