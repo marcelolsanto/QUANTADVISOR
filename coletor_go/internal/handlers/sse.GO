@@ -16,9 +16,9 @@ var (
 	Clients = make(map[Client]bool)
 	// Canal por onde entram as cotações novas (Buffered para evitar descartes sob alta carga)
 	Broadcast = make(chan []byte, 2048)
-	// Canais de controle de conexão
-	Register   = make(chan Client)
-	Unregister = make(chan Client)
+	// Canais de controle de conexão com buffer para evitar bloqueios
+	Register   = make(chan Client, 256)
+	Unregister = make(chan Client, 256)
 )
 
 // StartSSEHub é o coração do sistema. Fica rodando em background para sempre.
@@ -44,8 +44,10 @@ func StartSSEHub() {
 					// Mensagem enviada com sucesso para o pipe do cliente
 				default:
 					// Se o cliente travou/lento, removemos para não travar o servidor
-					close(client)
-					delete(Clients, client)
+					if _, ok := Clients[client]; ok {
+						delete(Clients, client)
+						close(client)
+					}
 				}
 			}
 		}

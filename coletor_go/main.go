@@ -83,10 +83,10 @@ func main() {
 				if database.Rdb == nil {
 					return
 				}
-				pubsub := database.Rdb.Subscribe(ctx, "market_ticks")
+				pubsub := database.Rdb.Subscribe(ctx, "market_ticks", "cotacoes")
 				defer pubsub.Close()
 				ch := pubsub.Channel()
-				log.Println("🎧 [SSE] Golang escutando cotações em tempo real no canal 'market_ticks'...")
+				log.Println("🎧 [SSE] Golang escutando cotações em tempo real nos canais 'market_ticks' e 'cotacoes'...")
 				for msg := range ch {
 					select {
 					case handlers.Broadcast <- []byte(msg.Payload):

@@ -58,12 +58,15 @@ def analisar_correlacao(tickers):
     # 🛡️ BLINDAGEM MÁXIMA: Se não houver dados, geramos uma imagem vazia 
     # e devolvemos sucesso=True para não quebrar a API do FastAPI (Erro 500)
     if df_precos is None:
-        plt.figure(figsize=(10, 8))
-        plt.text(0.5, 0.5, 'Aguardando Ingestão de Dados na Memória...', ha='center', va='center', color='#94a3b8', fontsize=14)
-        plt.gca().set_facecolor('#0f172a')
-        img_buffer = io.BytesIO()
-        plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=100, facecolor='#0f172a')
-        plt.close()
+        fig, ax = plt.subplots(figsize=(10, 8))
+        try:
+            ax.text(0.5, 0.5, 'Aguardando Ingestão de Dados na Memória...', ha='center', va='center', color='#94a3b8', fontsize=14)
+            ax.set_facecolor('#0f172a')
+            fig.patch.set_facecolor('#0f172a')
+            img_buffer = io.BytesIO()
+            fig.savefig(img_buffer, format='png', bbox_inches='tight', dpi=100, facecolor='#0f172a')
+        finally:
+            plt.close(fig)
         return {
             "sucesso": True, 
             "ativos_analisados": 0,
@@ -90,23 +93,24 @@ def analisar_correlacao(tickers):
     alertas_concentracao = [{"ativo1": p[0], "ativo2": p[1], "correlacao": float(round(v, 2))} for p, v in top_correlacionados.iloc[::-1].items()]
     oportunidades_hedge = [{"ativo1": p[0], "ativo2": p[1], "correlacao": float(round(v, 2))} for p, v in top_descorrelacionados.items()]
 
-    # Geração do Heatmap
-    plt.figure(figsize=(10, 8))
-    mask = np.triu(np.ones_like(matriz_corr, dtype=bool))
-    sns.heatmap(
-        matriz_corr, mask=mask, cmap='RdYlGn_r', center=0,
-        # Se a carteira tiver poucos ativos (<=10), exibe os números dentro do quadrado
-        annot=True if df_precos.shape[1] <= 10 else False, 
-        fmt=".2f", linewidths=0.5, cbar_kws={"shrink": .8}
-    )
-    plt.title('Mapa de Calor de Risco Sistêmico (Pearson)', fontsize=14, pad=15)
-    plt.xticks(rotation=45, ha='right', fontsize=9)
-    plt.yticks(rotation=0, fontsize=9)
-    plt.tight_layout()
+    # Geração do Heatmap Orientado a Objetos (Thread-Safe)
+    fig, ax = plt.subplots(figsize=(10, 8))
+    try:
+        mask = np.triu(np.ones_like(matriz_corr, dtype=bool))
+        sns.heatmap(
+            matriz_corr, mask=mask, cmap='RdYlGn_r', center=0,
+            annot=True if df_precos.shape[1] <= 10 else False, 
+            fmt=".2f", linewidths=0.5, cbar_kws={"shrink": .8}, ax=ax
+        )
+        ax.set_title('Mapa de Calor de Risco Sistêmico (Pearson)', fontsize=14, pad=15)
+        ax.tick_params(axis='x', rotation=45, labelsize=9)
+        ax.tick_params(axis='y', rotation=0, labelsize=9)
+        fig.tight_layout()
 
-    img_buffer = io.BytesIO()
-    plt.savefig(img_buffer, format='png', bbox_inches='tight', dpi=100)
-    plt.close()
+        img_buffer = io.BytesIO()
+        fig.savefig(img_buffer, format='png', bbox_inches='tight', dpi=100)
+    finally:
+        plt.close(fig)
 
     return {
         "sucesso": True,

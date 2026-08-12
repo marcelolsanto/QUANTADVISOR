@@ -142,7 +142,7 @@ class PayloadOtimizacao(BaseModel):
     perfil: str = "Conservador"
 
 @app.post("/streaming/ingestao/{ticker}/{fonte}")
-async def receber_dados_go(ticker: str, fonte: str, selic: float = 0.1450):
+def receber_dados_go(ticker: str, fonte: str, selic: float = 0.1450):
     try:
         chave_raw = f"raw:{fonte}:{ticker}"
         dados_crus_str = rdb.get(chave_raw)
@@ -407,14 +407,9 @@ def construir_matriz_precos_redis(tickers: List[str]) -> pd.DataFrame:
     return df_precos
 
 @app.post("/api/otimizar/hrp_nlp")
-async def otimizar_carteira_hrp_nlp(payload: PayloadOtimizacao):
+def otimizar_carteira_hrp_nlp(payload: PayloadOtimizacao):
     try:
-        try:
-            rdb_local = redis.Redis(host='quant_redis', port=6379, db=0, decode_responses=True)
-            rdb_local.ping()
-        except:
-            rdb_local = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-
+        rdb_local = rdb
         ativos_usuario = payload.tickers
         
         if len(ativos_usuario) < 5:

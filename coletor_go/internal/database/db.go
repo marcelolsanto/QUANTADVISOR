@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
@@ -69,6 +70,8 @@ func Conectar() {
 	// Configura limites do pool de conexões para prevenir saturação no PostgreSQL
 	Conn.SetMaxOpenConns(50)
 	Conn.SetMaxIdleConns(10)
+	Conn.SetConnMaxLifetime(30 * time.Minute)
+	Conn.SetConnMaxIdleTime(5 * time.Minute)
 
 	// Testa se o banco realmente está respondendo
 	if err = Conn.Ping(); err != nil {

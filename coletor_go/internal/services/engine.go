@@ -47,8 +47,33 @@ func GetGoEngineURL() string {
 	return strings.TrimSuffix(url, "/")
 }
 
+var muMacro sync.RWMutex
 var TaxaSelicGlobal float64 = 0.1450
 var DolarGlobal float64 = 5.0873
+
+func GetDolarGlobal() float64 {
+	muMacro.RLock()
+	defer muMacro.RUnlock()
+	return DolarGlobal
+}
+
+func SetDolarGlobal(val float64) {
+	muMacro.Lock()
+	defer muMacro.Unlock()
+	DolarGlobal = val
+}
+
+func GetTaxaSelicGlobal() float64 {
+	muMacro.RLock()
+	defer muMacro.RUnlock()
+	return TaxaSelicGlobal
+}
+
+func SetTaxaSelicGlobal(val float64) {
+	muMacro.Lock()
+	defer muMacro.Unlock()
+	TaxaSelicGlobal = val
+}
 
 var muIngestao sync.Mutex
 var IngestaoEmAndamento bool
@@ -192,15 +217,15 @@ func extrairCotacaoDolar() {
 		if err := json.Unmarshal(body, &result); err == nil {
 			if askStr, ok := result["USDBRL"]["ask"].(string); ok {
 				if cotacao, err := strconv.ParseFloat(askStr, 64); err == nil {
-					DolarGlobal = cotacao
-					log.Printf("💵 Cotação do Dólar atualizada na memória RAM: R$ %.4f", DolarGlobal)
+					SetDolarGlobal(cotacao)
+					log.Printf("💵 Cotação do Dólar atualizada na memória RAM: R$ %.4f", GetDolarGlobal())
 					return
 				}
 			}
 		}
 	}
 
-	log.Printf("⚠️ Erro ao atualizar Dólar via API. Mantendo último valor: R$ %.4f", DolarGlobal)
+	log.Printf("⚠️ Erro ao atualizar Dólar via API. Mantendo último valor: R$ %.4f", GetDolarGlobal())
 }
 
 func normalizarMoeda(ticker string, precoExtraido float64) float64 {
@@ -1206,6 +1231,17 @@ func executarSnapshotPatrimonial(dataFechamento time.Time) {
 		}
 	}
 	log.Printf("✅ [EOD] Fotografia Patrimonial concluída para o dia %s!", dataFormatada)
+
+	// Dispara notificação via SSE para o React atualizar os gráficos de gestão imediatamente
+	eodEvent, _ := json.Marshal(map[string]interface{}{
+		"tipo_evento":     "EOD_SNAPSHOT_FINALIZADO",
+		"data_fechamento": dataFormatada,
+		"timestamp":       time.Now().Format(time.RFC3339),
+	})
+	select {
+	case handlers.Broadcast <- eodEvent:
+	default:
+	}
 }
 
 func ValidarVendaComIsencao(usuarioID int, ticker string, volumeVenda float64, lucroDestaVenda float64, lucroProjetadoReinvestimento float64, moeda string) models.DecisaoFiscal {

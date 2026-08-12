@@ -12,7 +12,7 @@ class PayloadOtimizacao(BaseModel):
     precos_historicos: dict  # Preços de fechamento diário dos ativos
 
 @router.post("/api/otimizar/hrp")
-async def otimizar_carteira_hrp(payload: PayloadOtimizacao):
+def otimizar_carteira_hrp(payload: PayloadOtimizacao):
     try:
         # 1. Converter o JSON recebido em DataFrame do Pandas
         df_precos = pd.DataFrame(payload.precos_historicos)

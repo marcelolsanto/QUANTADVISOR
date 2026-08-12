@@ -88,10 +88,10 @@ def simular_monte_carlo(ticker, dias_projecao=252, simulacoes=2000):
             N = np.random.poisson(lamb * dt, simulacoes)
 
             J = np.zeros(simulacoes)
-            for i in range(simulacoes):
-                if N[i] > 0:
-                    tamanho_saltos = np.random.normal(mu_j, sigma_j, N[i])
-                    J[i] = np.sum(np.exp(tamanho_saltos) - 1)
+            idx_saltos = np.where(N > 0)[0]
+            for i in idx_saltos:
+                tamanho_saltos = np.random.normal(mu_j, sigma_j, N[i])
+                J[i] = np.sum(np.exp(tamanho_saltos) - 1)
 
             # Atualiza o Preço
             caminhos_preco[t] = caminhos_preco[t-1] * \

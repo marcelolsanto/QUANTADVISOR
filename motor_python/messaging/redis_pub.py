@@ -13,16 +13,21 @@ except ImportError:
     REDIS_AVAILABLE = False
 
 
+_REDIS_POOL = None
+
 def get_redis_client():
-    """Retorna um cliente Redis pré-configurado com base nas variáveis de ambiente."""
+    """Retorna um cliente Redis reutilizando um ConnectionPool global para alta concorrência."""
+    global _REDIS_POOL
     if not REDIS_AVAILABLE:
         raise RuntimeError("A biblioteca 'redis' não está instalada. Execute 'pip install redis'.")
 
-    host = os.getenv("REDIS_HOST", "localhost")
-    port = int(os.getenv("REDIS_PORT", 6379))
-    password = os.getenv("REDIS_PASSWORD", None) or None
-    
-    return redis.Redis(host=host, port=port, password=password, decode_responses=True)
+    if _REDIS_POOL is None:
+        host = os.getenv("REDIS_HOST", "quant_redis")
+        port = int(os.getenv("REDIS_PORT", 6379))
+        password = os.getenv("REDIS_PASSWORD", None) or None
+        _REDIS_POOL = redis.ConnectionPool(host=host, port=port, password=password, decode_responses=True)
+        
+    return redis.Redis(connection_pool=_REDIS_POOL)
 
 
 def publicar_sinal_hft(

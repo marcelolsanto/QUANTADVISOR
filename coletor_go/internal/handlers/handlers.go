@@ -1627,9 +1627,11 @@ func BuscarResumoFiscalMensal(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Summary Info Usuário
-// @Description Endpoint simplificado que retorna informações cruciais de contato (Nome, Email, Telefone) de uma conta específica. Utilizado principalmente pelas interfaces administrativas de CRM do Gestor.
+// @Summary Buscar Informações do Usuário
+// @Description Retorna informações cadastrais e patrimoniais da conta de um usuário.
 // @Tags Usuários
 // @Security BearerAuth
+// @Param id query int false "ID do Usuário"
 // @Success 200 {object} models.UsuarioResumo
 // @Router /usuario [get]
 func BuscarUsuarioInfo(w http.ResponseWriter, r *http.Request) {
@@ -1638,26 +1640,44 @@ func BuscarUsuarioInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usuarioID := r.URL.Query().Get("id")
+	usuarioIDStr := r.URL.Query().Get("id")
+	idLogado, _ := getAuth(r)
 
-	type Usuario struct {
-		Nome    string `json:"nome"`
-		Email   string `json:"email"`
-		Celular string `json:"celular"`
+	var targetID int
+	if usuarioIDStr != "" {
+		targetID, _ = strconv.Atoi(usuarioIDStr)
+	}
+	if targetID <= 0 {
+		targetID = idLogado
+	}
+	if targetID <= 0 {
+		targetID = 1
 	}
 
-	var user Usuario
-	// Busca os campos reais que você possui no banco
-	err := database.Conn.QueryRow("SELECT nome_cliente, email, whatsapp FROM contas_virtuais WHERE usuario_id = $1", usuarioID).Scan(&user.Nome, &user.Email, &user.Celular)
+	var u models.UsuarioResumo
+	query := `SELECT usuario_id, nome_cliente, perfil_risco, saldo_brl, saldo_usd, 
+			  COALESCE(email, ''), COALESCE(whatsapp, ''), COALESCE(login, ''), 
+			  COALESCE(lucro_acumulado, 0.0), COALESCE(role, 'CLIENTE'), 
+			  COALESCE(data_cadastro, CURRENT_TIMESTAMP), COALESCE(piloto_automatico, false)
+			  FROM contas_virtuais WHERE usuario_id = $1`
+
+	err := database.Conn.QueryRow(query, targetID).Scan(
+		&u.ID, &u.Nome, &u.Perfil, &u.SaldoBRL, &u.SaldoUSD, 
+		&u.Email, &u.Whatsapp, &u.Login, &u.Lucro, &u.Role, 
+		&u.DataCadastro, &u.PilotoAutomatico,
+	)
 
 	if err != nil {
-		user.Nome = "Investidor Padrão"
-		user.Email = "sem-email@quantadvisor.com.br"
-		user.Celular = "(00) 00000-0000"
+		u.ID = targetID
+		u.Nome = "Investidor Padrão"
+		u.Email = "sem-email@quantadvisor.com.br"
+		u.Whatsapp = "(00) 00000-0000"
+		u.Perfil = "Moderado"
+		u.Role = "CLIENTE"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(user)
+	json.NewEncoder(w).Encode(u)
 }
 
 // @Summary Login
@@ -1691,7 +1711,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	err := database.Conn.QueryRow(query, req.Login).Scan(&id, &nome, &senhaDB, &role)
 
 	errBcrypt := bcrypt.CompareHashAndPassword([]byte(senhaDB), []byte(req.Senha))
-	if err != nil || (errBcrypt != nil && senhaDB != req.Senha) {
+	if err != nil || errBcrypt != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(models.LoginResponse{Sucesso: false, Erro: "Login ou senha incorretos"})
 		return

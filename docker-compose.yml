@@ -57,7 +57,7 @@ services:
     container_name: quant_coletor_go
     restart: unless-stopped
     working_dir: /workspace/coletor_go
-    command: /bin/sh -c "export GOTOOLCHAIN=local && go mod tidy && go build -o quant_engine . && ./quant_engine"
+    command: /bin/sh -c "[ -f ./quant_engine ] || (export GOTOOLCHAIN=local && go build -o quant_engine .); ./quant_engine"
     ports:
       - "8080:8080"
     env_file:

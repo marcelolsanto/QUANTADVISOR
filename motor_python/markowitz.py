@@ -177,11 +177,11 @@ def aplicar_black_litterman(retornos_historicos_medios, matriz_covariancia, viso
         # A incerteza da visão cresce com a volatilidade intrínseca do ativo
         Omega[i, i] = matriz_covariancia.iloc[idx, idx] * tau
             
-    # Matemática bayesiana pura sem risco de matrizes singulares
-    inv_tau_cov = np.linalg.inv(tau * matriz_covariancia.values)
-    inv_omega = np.linalg.inv(Omega)
+    # Matemática bayesiana pura protegida por pseudo-inversa (Moore-Penrose) contra matrizes singulares
+    inv_tau_cov = np.linalg.pinv(tau * matriz_covariancia.values)
+    inv_omega = np.linalg.pinv(Omega)
     
-    termo1 = np.linalg.inv(inv_tau_cov + np.dot(np.dot(P.T, inv_omega), P))
+    termo1 = np.linalg.pinv(inv_tau_cov + np.dot(np.dot(P.T, inv_omega), P))
     termo2 = np.dot(inv_tau_cov, Pi) + np.dot(np.dot(P.T, inv_omega), Q)
     
     return pd.Series(np.dot(termo1, termo2), index=ativos)

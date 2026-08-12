@@ -29,13 +29,10 @@ type Claims struct {
 func ProtegerRota(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		
-		// 🤖 BYPASS INSTITUCIONAL PARA OS ROBÔS
-		// Exige um token secreto estático forte para validar a comunicação de robôs internos
+		// 🤖 AUTENTICAÇÃO DE ROBÔS INTERNOS
+		// Exige INTERNAL_BOT_SECRET configurado no ambiente para validar comunicação entre containers
 		botSecret := os.Getenv("INTERNAL_BOT_SECRET")
-		if botSecret == "" {
-			botSecret = "quantadvisor_internal_master_777_!@"
-		}
-		if r.Header.Get("X-Internal-Bot") == botSecret {
+		if botSecret != "" && r.Header.Get("X-Internal-Bot") == botSecret {
 			ctx := context.WithValue(r.Context(), "usuario_id", 1)
 			ctx = context.WithValue(ctx, "role", "GESTOR")
 			r = r.WithContext(ctx)
