@@ -116,6 +116,20 @@ export const UserMenu = ({ nome, role, onLogout, setTelaAtiva, mercadoAtivo, set
             ⚙️ Calibrar Meu Robô
           </button>
 
+          <a
+            href="/download/QuantAdvisor.apk"
+            download="QuantAdvisor.apk"
+            onClick={() => setIsOpen(false)}
+            style={{
+              width: '100%', background: 'rgba(16, 185, 129, 0.1)', border: `1px solid ${theme.compra}`, padding: '10px',
+              color: theme.compra, cursor: 'pointer', textAlign: 'left', borderRadius: '4px',
+              fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none',
+              boxSizing: 'border-box', marginTop: '4px', marginBottom: '4px'
+            }}
+          >
+            📱 Instalar App Android (.APK)
+          </a>
+
           <button 
             onClick={onLogout}
             style={{

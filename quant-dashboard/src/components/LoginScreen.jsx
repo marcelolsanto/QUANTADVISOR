@@ -152,6 +152,21 @@ export const LoginScreen = ({ onLoginSuccess }) => {
             <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '0.9rem', color: theme.textMuted }}>
               Novo por aqui? <span onClick={() => { setView('CADASTRO'); setErro(''); }} style={{ color: theme.info, cursor: 'pointer', fontWeight: 'bold', textDecoration: 'underline' }}>Abra a sua conta.</span>
             </p>
+
+            <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: `1px solid ${theme.border}`, textAlign: 'center' }}>
+              <a
+                href="/download/QuantAdvisor.apk"
+                download="QuantAdvisor.apk"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 16px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.1)', color: theme.compra, border: `1px solid ${theme.compra}`,
+                  borderRadius: '6px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem',
+                  transition: '0.2s'
+                }}
+              >
+                📱 Baixar App Nativo Android (.APK)
+              </a>
+            </div>
           </form>
         )}
 

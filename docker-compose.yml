@@ -117,6 +117,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./android_app/app/build/outputs/apk/debug:/var/www/downloads:ro
     networks:
       - quant_network
     depends_on:
@@ -127,7 +128,7 @@ services:
   # 🗄️ 6. Banco de Dados PostgreSQL
   db:
     image: postgres:15-alpine
-    container_name: quantadvisor_pg
+    container_name: quant_db_v2
     restart: unless-stopped
     env_file:
       - .env
