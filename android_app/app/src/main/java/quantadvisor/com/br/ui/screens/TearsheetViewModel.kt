@@ -46,20 +46,20 @@ class TearsheetViewModel @Inject constructor(
             _uiState.value = TearsheetUiState.Loading
             val uid = SecurityManager.getUsuarioId(getApplication())
             
-            val respResumo = async { repository.getInstitucionalResumo(uid) }
-            val respCurva = async { repository.getCurvaCapital(uid) }
-            val respReplay = async { repository.getReplayDecisao(uid) }
+            val respResumo = async<NetworkResult<ResumoEstrategia>> { repository.getInstitucionalResumo(uid) }
+            val respCurva = async<NetworkResult<List<PontoCurvaCapital>>> { repository.getCurvaCapital(uid) }
+            val respReplay = async<NetworkResult<List<ReplayDecisao>>> { repository.getReplayDecisao(uid) }
 
             val resumoResult = respResumo.await()
             val curvaResult = respCurva.await()
             val replayResult = respReplay.await()
 
-            if (resumoResult is NetworkResult.Success || curvaResult is NetworkResult.Success || replayResult is NetworkResult.Success) {
+            if (resumoResult is NetworkResult.Success<*> || curvaResult is NetworkResult.Success<*> || replayResult is NetworkResult.Success<*>) {
                 _uiState.update { 
                     TearsheetUiState.Success(
-                        resumo = resumoResult.getOrNull(),
-                        curva = curvaResult.getOrNull() ?: emptyList(),
-                        replay = replayResult.getOrNull() ?: emptyList()
+                        resumo = (resumoResult as? NetworkResult.Success<ResumoEstrategia>)?.data,
+                        curva = (curvaResult as? NetworkResult.Success<List<PontoCurvaCapital>>)?.data ?: emptyList(),
+                        replay = (replayResult as? NetworkResult.Success<List<ReplayDecisao>>)?.data ?: emptyList()
                     )
                 }
             } else {

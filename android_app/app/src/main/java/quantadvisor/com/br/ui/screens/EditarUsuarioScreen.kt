@@ -14,7 +14,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,7 +53,7 @@ fun EditarUsuarioScreen(
             TopAppBar(
                 title = {
                     Text(
-                        "Editar UsuÃ¡rio",
+                        "Editar Usuário",
                         color = PrimaryColor,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
@@ -116,7 +115,7 @@ fun EditarUsuarioScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Box(modifier = Modifier.weight(1f)) {
                             QADropdown(
-                                label = "NÃ­vel de Acesso",
+                                label = "Nível de Acesso",
                                 value = if (uiState.role == "GESTOR") "Gestor" else "Cliente",
                                 expanded = roleMenuExpanded,
                                 onExpandedChange = { roleMenuExpanded = it },
@@ -143,7 +142,7 @@ fun EditarUsuarioScreen(
                         }
                     }
 
-                    QAInput(label = "Login (UsuÃ¡rio)", value = uiState.login, onValueChange = { viewModel.onLoginChange(it) })
+                    QAInput(label = "Login (Usuário)", value = uiState.login, onValueChange = { viewModel.onLoginChange(it) })
 
                     QAInput(label = "Nova Senha (opcional)", value = uiState.senha, onValueChange = { viewModel.onSenhaChange(it) }, isPassword = true)
 
@@ -159,7 +158,7 @@ fun EditarUsuarioScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = Color.White)
                         ) {
                             if (uiState.isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                            else Text("SALVAR ALTERAÃ‡Ã•ES", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            else Text("SALVAR ALTERAÇÕES", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
 
                         Button(
@@ -230,7 +229,7 @@ fun QADropdown(
                 readOnly = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true),
                 shape = RoundedCornerShape(8.dp),
                 leadingIcon = leadingIcon?.let { { Icon(it, contentDescription = null, tint = TextMuted) } },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },

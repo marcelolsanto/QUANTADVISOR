@@ -61,7 +61,7 @@ fun NewsScreen(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("Todas", "ALTO", "MÃ‰DIO", "BAIXO").forEach { impacto ->
+                listOf("Todas", "ALTO", "MÉDIO", "BAIXO").forEach { impacto ->
                     FilterChip(
                         selected = uiState.filter == impacto,
                         onClick = { viewModel.setFilter(impacto) },
@@ -85,7 +85,7 @@ fun NewsScreen(
                 }
             } else if (filteredNews.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Nenhuma notÃ­cia de impacto ${uiState.filter}", color = TextMuted)
+                    Text("Nenhuma notícia de impacto ${uiState.filter}", color = TextMuted)
                 }
             } else {
                 LazyColumn(
@@ -105,7 +105,7 @@ fun NewsScreen(
 fun NewsCard(news: Noticia) {
     val impactColor = when (news.impacto) {
         "ALTO" -> VendaColor
-        "MÃ‰DIO" -> AlertaColor
+        "MÉDIO" -> AlertaColor
         else -> CompraColor
     }
 

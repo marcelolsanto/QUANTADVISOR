@@ -8,7 +8,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
 /**
- * Ponte de compatibilidade para acessar o Hilt em componentes nÃ£o-injetados
+ * Ponte de compatibilidade para acessar o Hilt em componentes não-injetados
  */
 object RetrofitClient {
     

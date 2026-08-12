@@ -3,7 +3,7 @@ package quantadvisor.com.br.data.model
 import com.google.gson.annotations.SerializedName
 
 // ==========================================
-// AUTENTICAÃ‡ÃƒO E USUÃRIOS
+// AUTENTICAÇÃO E USUÁRIOS
 // ==========================================
 
 data class LoginRequest(
@@ -96,7 +96,7 @@ data class EditarContaRequest(
 )
 
 // ==========================================
-// DASHBOARD E PORTFÃ“LIO
+// DASHBOARD E PORTFÓLIO
 // ==========================================
 
 data class CarteiraResponse(
@@ -139,7 +139,7 @@ data class PontoHistorico(
 )
 
 // ==========================================
-// OPERAÃ‡Ã•ES E TERMINAL
+// OPERAÇÕES E TERMINAL
 // ==========================================
 
 data class OrdemRequest(
@@ -153,6 +153,21 @@ data class OrdemRequest(
     val volume_brl: Double = 0.0
 )
 
+data class LogMercado(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val hora: String = "",
+    @SerializedName("ativo") val ativo: String? = "---",
+    @SerializedName("sinal") val sinal: String? = "NEUTRO",
+    @SerializedName("preco_atual") val precoAtual: Double? = 0.0,
+    @SerializedName("z_score") val zScore: Double? = 0.0,
+    @SerializedName("risco_var") val riscoVar: Double? = 0.0,
+    @SerializedName("distancia_vwap_perc") val distVwap: Double? = 0.0,
+    @SerializedName("volume_zscore") val volZScore: Double? = 0.0,
+    @SerializedName("fonte") val fonte: String? = "YAHOO",
+    @SerializedName("sinais_perfil") val sinaisPerfil: Map<String, String>? = null,
+    var sinalExibicao: String = ""
+)
+
 data class OrdemExecutada(
     val id: Int,
     val ticker: String,
@@ -162,14 +177,19 @@ data class OrdemExecutada(
     @SerializedName("data_hora") val dataHora: String
 )
 
+data class HistoricoResponse(
+    @SerializedName("sucesso") val sucesso: Boolean,
+    @SerializedName("ordens") val ordens: List<OrdemExecutada>? = emptyList()
+)
+
 data class AuditoriaResponse(
     val sucesso: Boolean,
     val regime: String,
     val total: Int,
-    val recomendacoes: List<Map<String, Any>> = emptyList(),
-    val ativos_monitorados: Int = 0,
-    val sinais_ativos: Int = 0,
-    val ultima_varredura: String = ""
+    val recomendacoes: List<LogMercado> = emptyList(),
+    @SerializedName("ativos_monitorados") val ativosMonitorados: Int = 0,
+    @SerializedName("sinais_ativos") val sinaisAtivos: Int = 0,
+    @SerializedName("ultima_varredura") val ultimaVarredura: String = ""
 )
 
 data class CambioRequest(
@@ -238,7 +258,7 @@ data class ResumoFiscalMensal(
 )
 
 // ==========================================
-// CONFIGURAÃ‡Ã•ES
+// CONFIGURAÇÕES
 // ==========================================
 
 data class ParametrosOperacionais(
@@ -255,10 +275,6 @@ data class ParametrosOperacionais(
     val custo_friccao_padrao: Double,
     val modo_isencao_fiscal_estrita: Boolean
 )
-
-// ==========================================
-// ANÃLISE E IA (RESPOSTAS FORTES)
-// ==========================================
 
 // ==========================================
 // HFT & WALLET MODELS
@@ -359,6 +375,7 @@ data class ProjecaoResponse(
 
 data class AssetAnalysis(
     val ticker: String,
+    val nome_empresa: String = "",
     val preco_atual: Double,
     val z_score: Double,
     val volatilidade: Double,
@@ -372,7 +389,14 @@ data class AssetAnalysis(
     val rsi: Double = 0.0,
     val beta: Double = 0.0,
     val ai_score: Int = 50,
-    val variacao_dia: Double = 0.0
+    val variacao_dia: Double = 0.0,
+    val setor: String = "N/A",
+    val industria: String = "N/A",
+    val colaboradores: String = "N/A",
+    val resumo: String = "",
+    val sede: String = "N/A",
+    val website: String = "",
+    val historico_precos: List<Double> = emptyList()
 )
 
 data class ResumoEstrategia(
@@ -411,7 +435,7 @@ data class TradeBacktest(
 )
 
 // ==========================================
-// NOTÃCIAS (GOOGLE NEWS RSS2JSON)
+// NOTÍCIAS (GOOGLE NEWS RSS2JSON)
 // ==========================================
 
 data class Noticia(
@@ -434,5 +458,6 @@ data class RssItem(
     val link: String,
     val pubDate: String,
     val content: String,
-    val description: String
+    val description: String,
+    val guid: String = ""
 )

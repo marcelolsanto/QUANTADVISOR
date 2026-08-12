@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,7 +38,7 @@ fun LoginScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Controle de NavegaÃ§Ã£o Interna
+    // Controle de Navegação Interna
     var currentView by remember { mutableStateOf(AuthView.LOGIN) }
 
     // Estados de Login
@@ -61,7 +60,7 @@ fun LoginScreen(
         if (uiState.isLoginSuccess) onLoginSuccess()
     }
 
-    // Efeito para sucesso de solicitaÃ§Ã£o de cadastro
+    // Efeito para sucesso de solicitação de cadastro
     LaunchedEffect(uiState.isRegisterRequestSuccess) {
         if (uiState.isRegisterRequestSuccess) {
             currentView = AuthView.OTP
@@ -102,7 +101,7 @@ fun LoginScreen(
                             .padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // CABEÃ‡ALHO (LOGO)
+                        // CABEÇALHO (LOGO)
                         Text(
                             text = "QuantAdvisor",
                             color = InfoColor,
@@ -111,7 +110,7 @@ fun LoginScreen(
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
                         Text(
-                            text = if (view == AuthView.LOGIN) "GestÃ£o Patrimonial e IA Institucional" else "Abertura de Conta",
+                            text = if (view == AuthView.LOGIN) "Gestão Patrimonial e IA Institucional" else "Abertura de Conta",
                             color = TextMuted,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(bottom = 24.dp),
@@ -120,7 +119,7 @@ fun LoginScreen(
 
                         uiState.error?.let { msg ->
                             Text(
-                                text = "âš ï¸ $msg",
+                                text = "⚠️ $msg",
                                 color = VendaColor,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier
@@ -199,7 +198,7 @@ fun LoginScreen(
                             OutlinedTextField(
                                 value = regWhats,
                                 onValueChange = { regWhats = it },
-                                placeholder = { Text("TelemÃ³vel (WhatsApp)", color = TextMuted) },
+                                placeholder = { Text("Telemóvel (WhatsApp)", color = TextMuted) },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                                 colors = inputColors,
                                 shape = RoundedCornerShape(8.dp),
@@ -238,7 +237,7 @@ fun LoginScreen(
                                         readOnly = true,
                                         colors = inputColors,
                                         shape = RoundedCornerShape(8.dp),
-                                        modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable, true)
+                                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
                                     )
                                     ExposedDropdownMenu(
                                         expanded = menuPerfilExpandido,
@@ -267,7 +266,7 @@ fun LoginScreen(
                             Button(
                                 onClick = {
                                     if (regNome.isBlank() || regEmail.isBlank() || regWhats.isBlank() || regLogin.isBlank() || regSenha.isBlank()) {
-                                        viewModel.login("", "") // ForÃ§ar erro de preenchimento
+                                        viewModel.login("", "") // Forçar erro de preenchimento
                                         return@Button
                                     }
                                     val request = NovaContaRequest(
@@ -286,11 +285,11 @@ fun LoginScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = InfoColor)
                             ) {
                                 if (uiState.isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
-                                else Text("RECEBER CÃ“DIGO NO WHATSAPP", color = Color.White, fontWeight = FontWeight.Bold)
+                                else Text("RECEBER CÓDIGO NO WHATSAPP", color = Color.White, fontWeight = FontWeight.Bold)
                             }
                             Spacer(modifier = Modifier.height(16.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("JÃ¡ tem conta? ", color = TextMuted, fontSize = 14.sp)
+                                Text("Já tem conta? ", color = TextMuted, fontSize = 14.sp)
                                 Text(
                                     text = "Fazer Login.",
                                     color = InfoColor,

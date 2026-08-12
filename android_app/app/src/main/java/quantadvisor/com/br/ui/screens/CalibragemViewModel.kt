@@ -43,8 +43,8 @@ class CalibragemViewModel @Inject constructor(
         val uid = _uiState.value.user?.id ?: SecurityManager.getUsuarioId(getApplication())
         viewModelScope.launch {
             val result = repository.getParametros(uid)
-            if (result is NetworkResult.Success) {
-                val p = result.data
+            if (result is NetworkResult.Success<*>) {
+                val p = (result as NetworkResult.Success<ParametrosOperacionais>).data
                 _uiState.update { it.copy(
                     kellyFraction = (p.multiplicador_kelly * 100).toFloat(),
                     maxConcentration = (p.limite_concentracao_ativo * 100).toFloat(),
@@ -63,7 +63,7 @@ class CalibragemViewModel @Inject constructor(
         val uid = _uiState.value.user?.id ?: SecurityManager.getUsuarioId(getApplication())
         viewModelScope.launch {
             val result = repository.togglePilotoAutomatico(TogglePilotoReq(uid, active))
-            if (result is NetworkResult.Success) {
+            if (result is NetworkResult.Success<*>) {
                 _uiState.update { it.copy(isPilotActive = active) }
             }
         }
@@ -89,7 +89,7 @@ class CalibragemViewModel @Inject constructor(
                     modo_isencao_fiscal_estrita = true
                 )
                 val result = repository.configurarRobo(req)
-                if (result is NetworkResult.Success && result.data.sucesso) {
+                if (result is NetworkResult.Success<*> && (result as NetworkResult.Success<GenericResponse>).data.sucesso) {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
                     _uiState.update { it.copy(isLoading = false, errorMessage = (result as? NetworkResult.Error)?.message ?: "Erro ao salvar") }

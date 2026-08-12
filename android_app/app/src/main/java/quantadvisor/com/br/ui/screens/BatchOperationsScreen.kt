@@ -42,7 +42,7 @@ fun BatchOperationsScreen(
         containerColor = BgBackground,
         topBar = {
             TopAppBar(
-                title = { Text("OperaÃ§Ãµes em Lote", fontWeight = FontWeight.Bold, color = PrimaryColor) },
+                title = { Text("Operações em Lote", fontWeight = FontWeight.Bold, color = PrimaryColor) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar", tint = PrimaryColor)
@@ -73,9 +73,9 @@ fun BatchOperationsScreen(
         ) {
             item {
                 AuditSummaryCard(
-                    assetsMonitored = uiState.auditoria?.ativos_monitorados ?: 0,
-                    activeSignals = uiState.auditoria?.sinais_ativos ?: 0,
-                    lastScan = uiState.auditoria?.ultima_varredura ?: "---"
+                    assetsMonitored = uiState.auditoria?.ativosMonitorados ?: 0,
+                    activeSignals = uiState.auditoria?.sinaisAtivos ?: 0,
+                    lastScan = uiState.auditoria?.ultimaVarredura ?: "---"
                 )
             }
 
@@ -148,7 +148,7 @@ fun AuditSummaryCard(assetsMonitored: Int, activeSignals: Int, lastScan: String)
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
-            Text("Ãšltima Varredura: $lastScan", color = TextMuted, fontSize = 10.sp, fontStyle = FontStyle.Italic)
+            Text("Última Varredura: $lastScan", color = TextMuted, fontSize = 10.sp, fontStyle = FontStyle.Italic)
         }
     }
 }
@@ -175,7 +175,7 @@ fun CartItemRow(item: CarrinhoItem) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(item.ticker, color = TextPrimary, fontWeight = FontWeight.Bold)
-                    Text("${item.tipo} â€¢ ${item.quantidade} un.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                    Text("${item.tipo} • ${item.quantidade} un.", color = TextMuted, style = MaterialTheme.typography.bodySmall)
                 }
             }
             Text("R$ ${String.format(Locale.GERMANY, "%,.2f", item.preco)}", color = TextPrimary, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)

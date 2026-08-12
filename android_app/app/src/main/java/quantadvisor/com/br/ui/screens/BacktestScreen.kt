@@ -54,7 +54,7 @@ fun BacktestScreen(
                 border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.3f))
             ) {
                 Column(Modifier.padding(20.dp)) {
-                    Text("ParÃ¢metros do Teste", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Parâmetros do Teste", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
                     
                     OutlinedTextField(
@@ -76,7 +76,7 @@ fun BacktestScreen(
                         shape = RoundedCornerShape(8.dp)
                     ) {
                         if (uiState.isLoading) CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
-                        else Text("INICIAR SIMULAÃ‡ÃƒO", color = Color.Black, fontWeight = FontWeight.Black)
+                        else Text("INICIAR SIMULAÇÃO", color = Color.Black, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -90,7 +90,7 @@ fun BacktestScreen(
                 Text(uiState.errorMessage!!, color = VendaColor, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
             } else {
                 Box(Modifier.fillMaxWidth().height(200.dp).background(SurfaceContainerLow, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
-                    Text("Aguardando definiÃ§Ã£o de ticker...", color = TextMuted)
+                    Text("Aguardando definição de ticker...", color = TextMuted)
                 }
             }
         }
@@ -112,7 +112,7 @@ fun BacktestResultsView(state: BacktestUiState) {
             colors = CardDefaults.cardColors(containerColor = SurfaceContainer)
         ) {
             Column(Modifier.padding(16.dp)) {
-                ResultRow("Drawdown MÃ¡ximo", "${state.maxDrawdown}%", VendaColor)
+                ResultRow("Drawdown Máximo", "${state.maxDrawdown}%", VendaColor)
                 // Outros campos poderiam ser adicionados se presentes no BacktestResponse
             }
         }

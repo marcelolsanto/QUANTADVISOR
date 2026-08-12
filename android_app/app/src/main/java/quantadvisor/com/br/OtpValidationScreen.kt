@@ -63,7 +63,7 @@ fun OtpValidationScreen(
     val uiState by viewModel.uiState.collectAsState()
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // Estado para os 6 dÃ­gitos individuais
+    // Estado para os 6 dígitos individuais
     val otpDigits = remember { mutableStateListOf("", "", "", "", "", "") }
     val focusRequesters = remember { List(6) { FocusRequester() } }
 
@@ -129,19 +129,19 @@ fun OtpValidationScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Ative sua Conta", color = OtpThemeColors.TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(6.dp))
-                        Text("Enviamos um cÃ³digo de 6 dÃ­gitos para o seu WhatsApp. Digite-o abaixo.", color = OtpThemeColors.TextMuted, fontSize = 14.sp, textAlign = TextAlign.Center, lineHeight = 20.sp)
+                        Text("Enviamos um código de 6 dígitos para o seu WhatsApp. Digite-o abaixo.", color = OtpThemeColors.TextMuted, fontSize = 14.sp, textAlign = TextAlign.Center, lineHeight = 20.sp)
                     }
 
                     // Mensagens de Alerta
                     uiState.errorMessage?.let { msg ->
                         Surface(color = OtpThemeColors.VendaColor.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = androidx.compose.foundation.BorderStroke(1.dp, OtpThemeColors.VendaColor), modifier = Modifier.fillMaxWidth()) {
-                            Text("âš ï¸ $msg", color = OtpThemeColors.VendaColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
+                            Text("⚠️ $msg", color = OtpThemeColors.VendaColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
                         }
                     }
 
                     uiState.successMessage?.let { msg ->
                         Surface(color = OtpThemeColors.CompraColor.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), border = androidx.compose.foundation.BorderStroke(1.dp, OtpThemeColors.CompraColor), modifier = Modifier.fillMaxWidth()) {
-                            Text("âœ… $msg", color = OtpThemeColors.CompraColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
+                            Text("✅ $msg", color = OtpThemeColors.CompraColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(12.dp))
                         }
                     }
 
@@ -202,7 +202,7 @@ fun OtpValidationScreen(
                         }
                     }
 
-                    // BotÃ£o Principal
+                    // Botão Principal
                     Button(
                         onClick = {
                             val code = otpDigits.joinToString("")
@@ -228,7 +228,7 @@ fun OtpValidationScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onResendCode() }) {
                             Icon(Icons.Default.Refresh, null, tint = OtpThemeColors.TextMuted, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Reenviar cÃ³digo", color = OtpThemeColors.TextMuted, fontSize = 13.sp)
+                            Text("Reenviar código", color = OtpThemeColors.TextMuted, fontSize = 13.sp)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { onBackClick() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = OtpThemeColors.TextMuted, modifier = Modifier.size(14.dp))

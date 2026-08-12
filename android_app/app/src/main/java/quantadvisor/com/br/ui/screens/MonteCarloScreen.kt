@@ -53,7 +53,7 @@ fun MonteCarloScreen(
                 border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.3f))
             ) {
                 Column(Modifier.padding(20.dp)) {
-                    Text("ConfiguraÃ§Ãµes ProbabilÃ­sticas", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Configurações Probabilísticas", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
                     
                     OutlinedTextField(
@@ -73,7 +73,7 @@ fun MonteCarloScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryColor)
                     ) {
                         if (uiState.isLoading) CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(24.dp))
-                        else Text("EXECUTAR 10.000 CENÃRIOS", color = Color.Black, fontWeight = FontWeight.Black)
+                        else Text("EXECUTAR 10.000 CENÁRIOS", color = Color.Black, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -93,7 +93,7 @@ fun MonteCarloScreen(
 @Composable
 fun MonteCarloResultsView(densityPoints: List<Pair<Float, Float>>) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("DISTRIBUIÃ‡ÃƒO DE PROBABILIDADES", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Black)
+        Text("DISTRIBUIÇÃO DE PROBABILIDADES", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Black)
         
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -101,9 +101,9 @@ fun MonteCarloResultsView(densityPoints: List<Pair<Float, Float>>) {
         ) {
             Column(Modifier.padding(16.dp)) {
                 ProbabilityRow("Probabilidade de Ganho", "74.2%", CompraColor)
-                ProbabilityRow("Retorno Esperado (MÃ©dio)", "+18.4%", CompraColor)
-                ProbabilityRow("Pior CenÃ¡rio (VaR 99%)", "-12.5%", VendaColor)
-                ProbabilityRow("Melhor CenÃ¡rio", "+45.8%", InfoColor)
+                ProbabilityRow("Retorno Esperado (Médio)", "+18.4%", CompraColor)
+                ProbabilityRow("Pior Cenário (VaR 99%)", "-12.5%", VendaColor)
+                ProbabilityRow("Melhor Cenário", "+45.8%", InfoColor)
             }
         }
         

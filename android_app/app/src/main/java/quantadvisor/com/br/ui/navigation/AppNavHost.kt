@@ -1,6 +1,7 @@
 package quantadvisor.com.br.ui.navigation
 
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.fragment.app.FragmentActivity
 import androidx.navigation.NavHostController
@@ -16,6 +17,7 @@ import quantadvisor.com.br.di.NetworkEvents
 import quantadvisor.com.br.di.RetrofitClient
 import quantadvisor.com.br.ui.screens.*
 import quantadvisor.com.br.ui.screens.crm.CentralGestaoScreen
+import quantadvisor.com.br.ui.screens.crm.AddUserScreen
 import quantadvisor.com.br.ui.screens.login.LoginScreen
 import quantadvisor.com.br.ui.screens.terminal.LiveTerminalScreen
 
@@ -27,7 +29,7 @@ fun AppNavHost(
     val context = LocalContext.current
     val activity = context as? FragmentActivity
 
-    // ðŸš¨ ESCUTAR EXPIRAÃ‡ÃƒO DE SESSÃƒO (LOGOUT AUTOMÃTICO)
+    // 🚨 ESCUTAR EXPIRAÇÃO DE SESSÃO (LOGOUT AUTOMÁTICO)
     LaunchedEffect(Unit) {
         NetworkEvents.sessionExpired.collectLatest {
             SecurityManager.limparSessao(context)
@@ -37,22 +39,24 @@ fun AppNavHost(
         }
     }
 
-    // ðŸ”’ BIOMETRIA NO INÃCIO (Se jÃ¡ estiver logado)
-    var isAuthenticatedByBiometrics by remember { 
+    // 🔒 BIOMETRIA NO INÍCIO (Se já estiver logado)
+    var isAuthenticatedByBiometrics by rememberSaveable { 
         mutableStateOf(startDestination == NavRoutes.Login.route) 
     }
 
-    if (!isAuthenticatedByBiometrics && activity != null) {
-        if (BiometricHelper.isBiometricAvailable(context)) {
-            BiometricHelper.showBiometricPrompt(
-                activity = activity,
-                title = "Acesso Seguro",
-                subtitle = "Confirme sua digital para entrar no terminal",
-                onSuccess = { isAuthenticatedByBiometrics = true },
-                onError = { /* Opcional: mostrar erro ou fechar app */ }
-            )
-        } else {
-            isAuthenticatedByBiometrics = true // Fallback se biometria nÃ£o disponÃ­vel
+    LaunchedEffect(isAuthenticatedByBiometrics) {
+        if (!isAuthenticatedByBiometrics && activity != null) {
+            if (BiometricHelper.isBiometricAvailable(context)) {
+                BiometricHelper.showBiometricPrompt(
+                    activity = activity,
+                    title = "Acesso Seguro",
+                    subtitle = "Confirme sua digital para entrar no terminal",
+                    onSuccess = { isAuthenticatedByBiometrics = true },
+                    onError = { /* Opcional: mostrar erro */ }
+                )
+            } else {
+                isAuthenticatedByBiometrics = true
+            }
         }
     }
 
@@ -65,7 +69,7 @@ fun AppNavHost(
             composable(NavRoutes.Login.route) {
                 LoginScreen(
                     onLoginSuccess = {
-                        navController.navigate(NavRoutes.Perfil.route) {
+                        navController.navigate(NavRoutes.Crm.route) {
                             popUpTo(NavRoutes.Login.route) { inclusive = true }
                         }
                     }
@@ -95,11 +99,16 @@ fun AppNavHost(
                     onGlobalClick = { navController.navigate(NavRoutes.GlobalManagement.route) },
                     onBacktestClick = { navController.navigate(NavRoutes.Backtest.route) },
                     onMonteCarloClick = { navController.navigate(NavRoutes.MonteCarlo.route) },
-                    onAssetAnalysisClick = { navController.navigate(NavRoutes.AssetAnalysis.route) }
+                    onAssetAnalysisClick = { ticker -> 
+                        navController.navigate(NavRoutes.AssetAnalysis.createRoute(ticker)) 
+                    },
+                    onTradeClick = { ticker, price ->
+                        navController.navigate(NavRoutes.Trade.createRoute(ticker, price))
+                    }
                 )
             }
 
-            // --- CRM (CENTRAL DE GESTÃƒO) ---
+            // --- CRM (CENTRAL DE GESTÃO) ---
             composable(NavRoutes.Crm.route) {
                 CentralGestaoScreen(
                     onEditUser = { user ->
@@ -112,7 +121,36 @@ fun AppNavHost(
                     onNavigateToTerminal = { user ->
                         navController.navigate(NavRoutes.Terminal.createRoute(user.id))
                     },
+                    onAddUser = {
+                        navController.navigate(NavRoutes.AddUser.route)
+                    },
                     onNavigateToGlobal = { navController.navigate(NavRoutes.GlobalManagement.route) }
+                )
+            }
+
+            // --- ADICIONAR USUÁRIO ---
+            composable(NavRoutes.AddUser.route) {
+                AddUserScreen(
+                    onBackClick = { navController.popBackStack() },
+                    onSuccess = { navController.popBackStack() }
+                )
+            }
+
+            // --- BOLETA DE NEGOCIAÇÃO ---
+            composable(
+                route = NavRoutes.Trade.route,
+                arguments = listOf(
+                    navArgument("ticker") { type = NavType.StringType },
+                    navArgument("price") { type = NavType.FloatType }
+                )
+            ) { backStackEntry ->
+                val ticker = backStackEntry.arguments?.getString("ticker") ?: ""
+                val price = backStackEntry.arguments?.getFloat("price")?.toDouble() ?: 0.0
+                TradeScreen(
+                    ticker = ticker,
+                    initialPrice = price,
+                    onBack = { navController.popBackStack() },
+                    onSuccess = { navController.popBackStack() }
                 )
             }
 
@@ -143,7 +181,7 @@ fun AppNavHost(
                 )
             }
 
-            // --- EDITAR USUÃRIO ---
+            // --- EDITAR USUÁRIO ---
             composable(
                 route = NavRoutes.EditUser.route,
                 arguments = listOf(navArgument("userId") { type = NavType.IntType })
@@ -170,7 +208,7 @@ fun AppNavHost(
             // --- PERFIL GESTOR ---
             composable(NavRoutes.Perfil.route) {
                 PerfilGestorScreen(
-                    onBackClick = { navController.navigate(NavRoutes.Crm.route) },
+                    onBackClick = { navController.popBackStack() },
                     onEditProfileClick = { user ->
                         navController.navigate(NavRoutes.EditUser.createRoute(user.id))
                     },
@@ -185,7 +223,7 @@ fun AppNavHost(
                 )
             }
 
-            // --- GESTÃƒO GLOBAL (AUM) ---
+            // --- GESTÃO GLOBAL (AUM) ---
             composable(NavRoutes.GlobalManagement.route) {
                 GlobalManagementScreen(
                     onTerminalClick = { navController.navigate(NavRoutes.Terminal.route) },
@@ -211,7 +249,7 @@ fun AppNavHost(
                 )
             }
 
-            // --- CONTÃBIL ---
+            // --- CONTÁBIL ---
             composable(NavRoutes.Accounting.route) {
                 AccountingScreen(onBackClick = { navController.popBackStack() })
             }
@@ -237,8 +275,15 @@ fun AppNavHost(
             }
 
             // --- ASSET ANALYSIS (RAIO-X) ---
-            composable(NavRoutes.AssetAnalysis.route) {
-                AssetAnalysisScreen(onBack = { navController.popBackStack() })
+            composable(
+                route = NavRoutes.AssetAnalysis.route,
+                arguments = listOf(navArgument("ticker") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val ticker = backStackEntry.arguments?.getString("ticker") ?: ""
+                AssetAnalysisScreen(
+                    tickerArg = ticker,
+                    onBack = { navController.popBackStack() }
+                )
             }
 
             // --- PORTFOLIO ---

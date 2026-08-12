@@ -40,8 +40,6 @@ fun InstitutionalTearsheetScreen(
     viewModel: TearsheetViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var expanded by remember { mutableStateOf(false) }
-    val funds = listOf("Alpha Fund Volatility", "Global Macro Q-3", "Client Managed: 8892-A")
 
     Scaffold(
         containerColor = BgBackground,
@@ -67,7 +65,7 @@ fun InstitutionalTearsheetScreen(
                     IconButton(onClick = { }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.TrendingDown,
-                            contentDescription = "TendÃªncia",
+                            contentDescription = "Tendência",
                             tint = TextMuted
                         )
                     }
@@ -85,7 +83,7 @@ fun InstitutionalTearsheetScreen(
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Timeline, contentDescription = null) },
-                    label = { Text("PortfÃ³lio") },
+                    label = { Text("Portfólio") },
                     selected = true,
                     onClick = onPortfolioClick
                 )
@@ -134,41 +132,6 @@ fun InstitutionalTearsheetScreen(
                         Text("Tearsheet Institucional", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
                     }
 
-                    // Fund Selector
-                    Box {
-                        Surface(
-                            onClick = { expanded = true },
-                            color = SurfaceContainerLow,
-                            border = BorderStroke(1.dp, OutlineVariant),
-                            shape = RoundedCornerShape(4.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(state.selectedFund, color = TextPrimary, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
-                                Icon(Icons.Default.ExpandMore, null, tint = TextMuted)
-                            }
-                        }
-                        DropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f).background(SurfaceContainer)
-                        ) {
-                            funds.forEach { fund ->
-                                DropdownMenuItem(
-                                    text = { Text(fund, color = TextPrimary) },
-                                    onClick = {
-                                        viewModel.onFundSelected(fund)
-                                        expanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
                     // KPI Grid
                     val res = state.resumo
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -180,7 +143,7 @@ fun InstitutionalTearsheetScreen(
                         )
                         TearsheetKpiCard(
                             modifier = Modifier.weight(1f),
-                            label = "Lucro LÃ­quido (YTD)",
+                            label = "Lucro Líquido (YTD)",
                             value = "+$ ${String.format(Locale.GERMANY, "%,.2f", res?.lucro_liquido_net ?: 0.0)}",
                             accentColor = CompraColor,
                             subValue = "+${String.format(Locale.GERMANY, "%.1f", res?.win_rate_net ?: 0.0)}%",
@@ -198,10 +161,10 @@ fun InstitutionalTearsheetScreen(
                         )
                         TearsheetKpiCard(
                             modifier = Modifier.weight(1f),
-                            label = "Total de OperaÃ§Ãµes",
+                            label = "Total de Operações",
                             value = "${res?.total_operacoes ?: 0}",
                             accentColor = SurfaceVariant,
-                            subValue = "Ãºltimos 30d"
+                            subValue = "últimos 30d"
                         )
                     }
 
@@ -213,7 +176,7 @@ fun InstitutionalTearsheetScreen(
                     ) {
                         Column(Modifier.padding(16.dp)) {
                             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                                Text("EvoluÃ§Ã£o Patrimonial vs Volatilidade", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                Text("Evolução Patrimonial vs Volatilidade", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                                 Surface(color = SurfaceContainerLow, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.dp, OutlineVariant)) {
                                     Text("YTD", color = TextPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
                                 }
@@ -275,22 +238,22 @@ fun InstitutionalTearsheetScreen(
 
                     // Decision Replay Table
                     Column {
-                        Text("ðŸ“œ REPLAY DE DECISÃƒO", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, modifier = Modifier.padding(bottom = 12.dp))
+                        Text("📜 REPLAY DE DECISÃO", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp, modifier = Modifier.padding(bottom = 12.dp))
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = SurfaceContainer),
                             border = BorderStroke(1.dp, OutlineVariant.copy(alpha = 0.5f))
                         ) {
                             Column {
-                                val replayItems = state.replay.ifEmpty {
-                                    listOf(
-                                        ReplayDecisao("14:22:01", "WINZ24", 2.45, 12.0, "COMPRA", 1.5, "Agressivo", "BULL"),
-                                        ReplayDecisao("14:15:33", "WDOZ24", -3.12, 8.0, "VENDA", 2.0, "Moderado", "BEAR")
-                                    )
-                                }
-                                replayItems.forEach { item ->
-                                    ReplayRow(item)
-                                    HorizontalDivider(color = OutlineVariant.copy(alpha = 0.2f))
+                                val replayItems = state.replay
+
+                                if (replayItems.isEmpty()) {
+                                    Text("Nenhuma operação registrada na auditoria da IA.", color = TextMuted, modifier = Modifier.padding(16.dp))
+                                } else {
+                                    replayItems.forEach { item ->
+                                        ReplayRow(item)
+                                        HorizontalDivider(color = OutlineVariant.copy(alpha = 0.2f))
+                                    }
                                 }
                             }
                         }

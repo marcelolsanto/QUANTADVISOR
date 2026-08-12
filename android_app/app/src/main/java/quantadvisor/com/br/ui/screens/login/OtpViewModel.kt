@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import quantadvisor.com.br.data.model.GenericResponse
 import quantadvisor.com.br.data.model.NetworkResult
 import quantadvisor.com.br.data.model.ValidarCadastroRequest
 import quantadvisor.com.br.data.repository.MarketRepository
@@ -30,7 +31,7 @@ class OtpViewModel @Inject constructor(
 
     fun validar(email: String, codigo: String) {
         if (codigo.length < 6) {
-            _uiState.update { it.copy(errorMessage = "Digite os 6 dÃ­gitos do cÃ³digo.") }
+            _uiState.update { it.copy(errorMessage = "Digite os 6 dígitos do código.") }
             return
         }
 
@@ -38,8 +39,8 @@ class OtpViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = repository.validarCadastro(ValidarCadastroRequest(email, codigo))) {
-                is NetworkResult.Success -> {
-                    val response = result.data
+                is NetworkResult.Success<*> -> {
+                    val response = (result as NetworkResult.Success<GenericResponse>).data
                     if (response.sucesso) {
                         _uiState.update { it.copy(
                             isLoading = false,
@@ -49,7 +50,7 @@ class OtpViewModel @Inject constructor(
                     } else {
                         _uiState.update { it.copy(
                             isLoading = false,
-                            errorMessage = response.erro ?: "CÃ³digo invÃ¡lido ou expirado."
+                            errorMessage = response.erro ?: "Código inválido ou expirado."
                         )}
                     }
                 }

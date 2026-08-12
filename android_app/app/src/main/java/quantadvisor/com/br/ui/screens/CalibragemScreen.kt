@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -106,7 +107,7 @@ fun CalibragemScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            // Header de SeleÃ§Ã£o
+            // Header de Seleção
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -120,7 +121,7 @@ fun CalibragemScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Ajustando robÃ´ de:", color = TextMuted, fontSize = 14.sp)
+                        Text("Ajustando robô de:", color = TextMuted, fontSize = 14.sp)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
@@ -136,27 +137,13 @@ fun CalibragemScreen(
 
                     HorizontalDivider(color = OutlineVariant)
 
-                    // MODO PILOTO AUTOMÃTICO
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text("PILOTO AUTOMÃTICO (IA)", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Text("Permite que o motor execute ordens via B3", color = TextMuted, fontSize = 12.sp)
-                        }
-                        Switch(
-                            checked = uiState.isPilotActive,
-                            onCheckedChange = { viewModel.togglePiloto(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = CompraColor,
-                                uncheckedThumbColor = Color.White,
-                                uncheckedTrackColor = OutlineVariant
-                            )
-                        )
-                    }
+                    // Rodapé Informativo
+                    Text(
+                        "Nota: A calibragem de risco acima altera os limites de compra/venda do motor quantitativo para este perfil específico.",
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontStyle = FontStyle.Italic
+                    )
                 }
             }
 
@@ -172,7 +159,7 @@ fun CalibragemScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Default.Bolt, contentDescription = null, tint = AlertaColor, modifier = Modifier.size(20.dp))
                     Text(
-                        "Aplicando Setup de TolerÃ¢ncia a Risco: ${uiState.user?.perfil_risco?.uppercase() ?: "AGRESSIVO"}",
+                        "Aplicando Setup de Tolerância a Risco: ${uiState.user?.perfil_risco?.uppercase() ?: "AGRESSIVO"}",
                         color = AlertaColor,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -180,7 +167,7 @@ fun CalibragemScreen(
                 }
             }
 
-            // SeÃ§Ã£o de Dimensionamento
+            // Seção de Dimensionamento
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -191,32 +178,32 @@ fun CalibragemScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ShowChart, contentDescription = null, tint = PrimaryColor, modifier = Modifier.size(20.dp))
-                    Text("Dimensionamento de PosiÃ§Ã£o", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Dimensionamento de Posição", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 
                 HorizontalDivider(color = OutlineVariant)
 
                 // Setting 1
                 SliderSetting(
-                    title = "Agressividade (FraÃ§Ã£o de Kelly)",
+                    title = "Agressividade (Fração de Kelly)",
                     value = uiState.kellyFraction,
                     onValueChange = { viewModel.onKellyChange(it) },
                     valueText = "${uiState.kellyFraction.toInt()}%",
                     color = PrimaryColor,
-                    description = "Determina o quanto o robÃ´ confia na IA. Valores pequenos (5%) geram um giro rÃ¡pido sem abalar o patrimÃ´nio principal (Scalp).",
+                    description = "Determina o quanto o robô confia na IA. Valores pequenos (5%) geram um giro rápido sem abalar o patrimônio principal (Scalp).",
                     minLabel = "Conservador (5%)",
                     maxLabel = "Agressivo (50%)"
                 )
 
                 // Setting 2
                 SliderSetting(
-                    title = "ConcentraÃ§Ã£o MÃ¡xima por Ativo",
+                    title = "Concentração Máxima por Ativo",
                     value = uiState.maxConcentration,
                     onValueChange = { viewModel.onMaxConcentrationChange(it) },
                     valueText = "${uiState.maxConcentration.toInt()}%",
                     color = AlertaColor,
-                    description = "Teto de exposiÃ§Ã£o direcional para evitar risco de ruÃ­na caso uma empresa quebre.",
-                    minLabel = "DiluÃ­do (5%)",
+                    description = "Teto de exposição direcional para evitar risco de ruína caso uma empresa quebre.",
+                    minLabel = "Diluído (5%)",
                     maxLabel = "Concentrado (30%)"
                 )
 
@@ -227,13 +214,13 @@ fun CalibragemScreen(
                     onValueChange = { viewModel.onTakeProfitChange(it) },
                     valueText = "+${uiState.takeProfit.toInt()}%",
                     color = CompraColor,
-                    description = "ForÃ§a a venda da posiÃ§Ã£o para realizar o lucro percentual e voltar para a seguranÃ§a de caixa.",
+                    description = "Força a venda da posição para realizar o lucro percentual e voltar para a segurança de caixa.",
                     minLabel = "Curto (+5%)",
                     maxLabel = "Longo (+25%)"
                 )
             }
 
-            // Trava de SeguranÃ§a
+            // Trava de Segurança
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -244,10 +231,10 @@ fun CalibragemScreen(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Icon(Icons.Default.Warning, contentDescription = null, tint = VendaColor, modifier = Modifier.size(20.dp))
-                        Text("Trava de SeguranÃ§a (Max Drawdown)", color = VendaColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Trava de Segurança (Max Drawdown)", color = VendaColor, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                     }
                     Text(
-                        "Interrompe as operaÃ§Ãµes do robÃ´ automaticamente se a perda mÃ¡xima da carteira atingir este limite no dia.",
+                        "Interrompe as operações do robô automaticamente se a perda máxima da carteira atingir este limite no dia.",
                         color = TextMuted,
                         fontSize = 12.sp
                     )

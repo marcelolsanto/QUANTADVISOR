@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import quantadvisor.com.br.data.model.BacktestResponse
 import quantadvisor.com.br.data.model.NetworkResult
 import quantadvisor.com.br.data.model.TradeBacktest
 import quantadvisor.com.br.data.repository.MarketRepository
@@ -40,8 +41,8 @@ class BacktestViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = repository.runBacktest(ticker)) {
-                is NetworkResult.Success -> {
-                    val resp = result.data
+                is NetworkResult.Success<*> -> {
+                    val resp = (result as NetworkResult.Success<BacktestResponse>).data
                     if (resp.sucesso) {
                         _uiState.update { it.copy(
                             isLoading = false,

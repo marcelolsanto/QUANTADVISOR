@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import quantadvisor.com.br.data.model.EditarContaRequest
+import quantadvisor.com.br.data.model.GenericResponse
 import quantadvisor.com.br.data.model.NetworkResult
 import quantadvisor.com.br.data.model.UsuarioResumo
 import quantadvisor.com.br.data.repository.MarketRepository
@@ -71,14 +72,14 @@ class EditarUsuarioViewModel @Inject constructor(
                     role = u.role
                 )
                 val result = repository.editarUsuario(req)
-                if (result is NetworkResult.Success && result.data.sucesso) {
+                if (result is NetworkResult.Success<*> && (result as NetworkResult.Success<GenericResponse>).data.sucesso) {
                     _uiState.update { it.copy(isLoading = false, isSuccess = true) }
                 } else {
                     val msg = if (result is NetworkResult.Error) result.message else "Erro ao salvar"
                     _uiState.update { it.copy(isLoading = false, errorMessage = msg) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false, errorMessage = "Erro de conexÃ£o") }
+                _uiState.update { it.copy(isLoading = false, errorMessage = "Erro de conexão") }
             }
         }
     }

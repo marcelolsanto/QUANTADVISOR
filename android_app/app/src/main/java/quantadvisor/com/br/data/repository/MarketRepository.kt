@@ -1,7 +1,11 @@
 package quantadvisor.com.br.data.repository
 
+import android.content.Context
 import android.util.Log
 import com.google.gson.Gson
+import com.google.gson.JsonParser
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -11,10 +15,12 @@ import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
+import quantadvisor.com.br.SecurityManager
 import quantadvisor.com.br.data.api.ExternalNewsApi
 import quantadvisor.com.br.data.api.QuantApiService
 import quantadvisor.com.br.data.model.*
-import quantadvisor.com.br.ui.screens.terminal.LogMercado
+import quantadvisor.com.br.di.NetworkModule
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -28,17 +34,32 @@ class MarketRepository @Inject constructor(
     private val api: QuantApiService,
     private val newsApi: ExternalNewsApi,
     private val client: OkHttpClient,
+    @param:ApplicationContext private val context: Context,
     private val gson: Gson = Gson()
 ) {
-    // --- STREAMING (SSE) COM RECONEXÃƒO ---
-    fun listenMarketFlow(): Flow<MarketEvent> = callbackFlow {
-        Log.d("QuantAdvisor", "SSE: Iniciando conexÃ£o streaming...")
+    // --- STREAMING (SSE) ---
+    // 🛡️ REFINADO PARA HFT: Derivado dinamicamente de NetworkModule.BASE_URL
+    fun listenMarketFlow(ctx: Context): Flow<MarketEvent> = callbackFlow {
+        Log.d("QuantAdvisor", "SSE: Iniciando conexão streaming...")
         
-        val baseUrl = NetworkModule.BASE_URL.removeSuffix("/")
-        val sseUrl = "$baseUrl/stream/mercado"
+        val sseClient = client.newBuilder()
+            .apply { interceptors().removeAll { it is okhttp3.logging.HttpLoggingInterceptor } }
+            .readTimeout(0, java.util.concurrent.TimeUnit.MILLISECONDS)
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+
+        val token = SecurityManager.getToken(ctx)
+        
+        // 🛡️ URL DINÂMICA (Se adapta a Produção, Emulador ou Celular Físico via IP)
+        val url = quantadvisor.com.br.di.NetworkModule.BASE_URL + "stream/mercado"
+        
         val request = Request.Builder()
-            .url(sseUrl)
+            .url(url)
             .header("Accept", "text/event-stream")
+            .header("Cache-Control", "no-cache")
+            // 🛡️ REMOVIDO: O interceptor do OkHttpClient injetado (via NetworkModule) 
+            // já adiciona automaticamente o cabeçalho "Authorization: Bearer <token>".
+            // Adicionar aqui causava cabeçalho duplicado e erro 400/401 no backend Go.
             .build()
 
         val listener = object : EventSourceListener() {
@@ -46,32 +67,67 @@ class MarketRepository @Inject constructor(
                 Log.d("QuantAdvisor", "SSE: Streaming Conectado!")
                 trySend(MarketEvent.Status(true))
             }
+
             override fun onEvent(eventSource: EventSource, id: String?, type: String?, data: String) {
                 try {
-                    val log = gson.fromJson(data.trim(), LogMercado::class.java)
+                    val rawJson = data.trim()
+                    if (rawJson.isEmpty()) return
+
+                    val rootObject = JsonParser.parseString(rawJson).asJsonObject
+                    
+                    // A API Go embrulha o payload do Python em {"tipo": "TICK_MERCADO", "dados": {...}}
+                    val jsonObject = if (rootObject.has("dados")) rootObject.getAsJsonObject("dados") else rootObject
+
+                    val ativo = jsonObject.get("ativo")?.asString ?: "---"
+                    val preco = jsonObject.get("preco_atual")?.asDouble ?: 0.0
+                    val zScore = jsonObject.get("z_score")?.asDouble ?: 0.0
+                    val riscoVar = jsonObject.get("risco_var")?.asDouble ?: 0.0
+                    val distVwap = jsonObject.get("distancia_vwap_perc")?.asDouble ?: 0.0
+                    val volZ = jsonObject.get("volume_zscore")?.asDouble ?: 0.0
+                    
+                    val sinaisPerfilMap = mutableMapOf<String, String>()
+                    if (jsonObject.has("sinais_perfil")) {
+                        val perfis = jsonObject.getAsJsonObject("sinais_perfil")
+                        perfis.entrySet().forEach { (k, v) -> sinaisPerfilMap[k] = v.asString }
+                    }
+                    
+                    val sinalGeral = jsonObject.get("sinal")?.asString ?: "NEUTRO"
+
+                    val log = LogMercado(
+                        ativo = ativo,
+                        sinal = sinalGeral,
+                        precoAtual = preco,
+                        zScore = zScore,
+                        riscoVar = riscoVar,
+                        distVwap = distVwap,
+                        volZScore = volZ,
+                        sinaisPerfil = sinaisPerfilMap,
+                        hora = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                    )
+                    
                     trySend(MarketEvent.Data(log))
                 } catch (e: Exception) {
-                    Log.e("QuantAdvisor", "SSE: Erro ao parsear JSON", e)
+                    Log.e("QuantAdvisor", "SSE: Erro ao parsear tick: ${e.message}")
                 }
             }
+
             override fun onClosed(eventSource: EventSource) {
-                Log.w("QuantAdvisor", "SSE: Streaming Fechado")
+                Log.d("QuantAdvisor", "SSE: Conexão fechada.")
                 trySend(MarketEvent.Status(false))
             }
+
             override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                Log.e("QuantAdvisor", "SSE: Falha na conexÃ£o streaming", t)
+                Log.e("QuantAdvisor", "SSE: Falha na conexão!", t)
                 trySend(MarketEvent.Status(false))
             }
         }
 
-        val eventSource = EventSources.createFactory(client).newEventSource(request, listener)
-        awaitClose { 
-            Log.d("QuantAdvisor", "SSE: Cancelando streaming")
-            eventSource.cancel() 
-        }
+        val eventSource = EventSources.createFactory(sseClient).newEventSource(request, listener)
+        awaitClose { eventSource.cancel() }
     }
 
-    // --- REST CALLS ---
+    // --- MÉTODOS REST (V7 UPDATES) ---
+    
     suspend fun getBuyingPower(): NetworkResult<BuyingPowerResponse> {
         return try {
             val response = api.getBuyingPower()
@@ -96,6 +152,14 @@ class MarketRepository @Inject constructor(
         } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
     }
 
+    suspend fun iniciarIngestaoManual(): NetworkResult<GenericResponse> {
+        return try {
+            val response = api.iniciarIngestaoManual()
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao iniciar ingestão HFT")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
     suspend fun criarUsuario(request: NovaContaRequest): NetworkResult<GenericResponse> {
         return try {
             val response = api.criarUsuario(request)
@@ -104,276 +168,13 @@ class MarketRepository @Inject constructor(
         } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
     }
 
-    suspend fun realizarCambio(request: CambioRequest): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.realizarCambio(request)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro no câmbio")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun otimizarCarteira(usuarioId: Int): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.otimizarCarteira(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro na otimização")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun preverLSTM(ticker: String): NetworkResult<LstmResponse> {
-        return try {
-            val response = api.preverLSTM(ticker)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro na previsão LSTM")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun agenteCausalidade(body: Map<String, String>): NetworkResult<Map<String, Any>> {
-        return try {
-            val response = api.agenteCausalidade(body)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro na inferência causal")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun listarUsuarios(): NetworkResult<List<UsuarioResumo>> {
-        return try {
-            val response = api.listarUsuarios()
-            if (response.isSuccessful) NetworkResult.Success(response.body() ?: emptyList())
-            else NetworkResult.Error("Erro ${response.code()}")
-        } catch (e: Exception) { NetworkResult.Error(e.message ?: "Falha na rede", e) }
-    }
-
-    suspend fun listarPerfis(): NetworkResult<List<PerfilInvestidor>> {
-        return try {
-            val response = api.listarPerfis()
-            if (response.isSuccessful) NetworkResult.Success(response.body() ?: emptyList())
-            else NetworkResult.Error("Erro perfis")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getResumoDashboard(usuarioId: Int): NetworkResult<ResumoDashboard> {
-        return try {
-            val response = api.getResumoDashboard(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro Dashboard")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getDashboardMacro(): NetworkResult<MacroResponse> {
-        return try {
-            val response = api.getDashboardMacro()
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro Macro")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getDashboardHistorico(usuarioId: Int): NetworkResult<List<PontoHistorico>> {
-        return try {
-            val response = api.getDashboardHistorico(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro histÃ³rico")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun obterInfoUsuario(id: Int? = null): NetworkResult<UsuarioResumo> {
-        return try {
-            val response = api.obterInfoUsuario(id)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("UsuÃ¡rio nÃ£o encontrado")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getResumoFiscal(usuarioId: Int, anoMes: String): NetworkResult<ResumoFiscalMensal> {
-        return try {
-            val response = api.getResumoFiscal(usuarioId, anoMes)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro fiscal")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun listarLancamentos(usuarioId: Int): NetworkResult<List<ItemLancamento>> {
-        return try {
-            val response = api.listarLancamentos(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro lanÃ§amentos")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun listarLotes(usuarioId: Int): NetworkResult<List<LoteFiscal>> {
-        return try {
-            val response = api.listarLotes(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro lotes")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getInstitucionalResumo(usuarioId: Int? = null): NetworkResult<ResumoEstrategia> {
-        return try {
-            val response = api.getInstitucionalResumo(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro institucional")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getCurvaCapital(usuarioId: Int? = null): NetworkResult<List<PontoCurvaCapital>> {
-        return try {
-            val response = api.getCurvaCapital(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro curva")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getReplayDecisao(usuarioId: Int? = null): NetworkResult<List<ReplayDecisao>> {
-        return try {
-            val response = api.getReplayDecisao(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro replay")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun runBacktest(ticker: String): NetworkResult<BacktestResponse> {
-        return try {
-            val response = api.backtest(ticker)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro backtest")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun runMonteCarlo(ticker: String): NetworkResult<MonteCarloResponse> {
-        return try {
-            val response = api.monteCarlo(ticker)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro monte carlo")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getNoticias(): NetworkResult<List<Noticia>> {
-        return try {
-            val rssUrl = "https://news.google.com/rss/search?q=mercado+financeiro+bolsa+de+valores+economia&hl=pt-BR&gl=BR&ceid=BR:pt-419"
-            val fullUrl = "https://api.rss2json.com/v1/api.json?rss_url=$rssUrl"
-            val response = newsApi.getGoogleNews(fullUrl)
-            if (response.isSuccessful && response.body() != null) {
-                val mapped = response.body()!!.items.map { item ->
-                    Noticia(item.link, item.title, item.description, "Google News", item.pubDate, "MÃ‰DIO", item.link)
-                }
-                NetworkResult.Success(mapped)
-            } else NetworkResult.Error("Falha nas notÃ­cias")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getDetalhesAtivo(ticker: String): NetworkResult<AssetAnalysis> {
-        return try {
-            val response = api.getDetalhesAtivo(ticker)
-            if (response.isSuccessful && response.body() != null) {
-                val body = response.body()!!
-                val ia = body.ia_status ?: emptyMap()
-                val fund = (body.fundamentos?.get("quoteSummary") as? Map<*, *>)
-                    ?.let { (it["result"] as? List<*>)?.get(0) as? Map<*, *> }
-                    ?.get("financialData") as? Map<*, *>
-
-                val analysis = AssetAnalysis(
-                    ticker = ticker,
-                    preco_atual = (ia["preco_atual"] as? Double) ?: 0.0,
-                    z_score = (ia["z_score"] as? Double) ?: 0.0,
-                    volatilidade = (ia["risco_var"] as? Double) ?: 0.0,
-                    ai_decision = (ia["sinal"] as? String) ?: "NEUTRO",
-                    ai_score = (ia["ai_score"] as? Double)?.toInt() ?: 50,
-                    roe = (fund?.get("returnOnEquity") as? Map<*, *>)?.get("raw") as? Double ?: 0.0,
-                    dividend_yield = (fund?.get("dividendYield") as? Map<*, *>)?.get("raw") as? Double ?: 0.0,
-                    p_e = (fund?.get("trailingPE") as? Map<*, *>)?.get("raw") as? Double ?: 0.0,
-                    margem_liquida = (fund?.get("profitMargins") as? Map<*, *>)?.get("raw") as? Double ?: 0.0
-                )
-                NetworkResult.Success(analysis)
-            } else NetworkResult.Error("Ativo nÃ£o encontrado")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getCarteira(usuarioId: Int? = null): NetworkResult<CarteiraResponse> {
-        return try {
-            val response = api.getCarteira(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro carteira")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun enviarOrdem(request: OrdemRequest): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.enviarOrdem(request)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro ordem")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun togglePilotoAutomatico(request: TogglePilotoReq): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.togglePilotoAutomatico(request)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro piloto")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getAuditoriaMercado(): NetworkResult<AuditoriaResponse> {
-        return try {
-            val response = api.getAuditoriaMercado()
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro auditoria")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun limparCarrinho(ids: List<Int>): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.limparCarrinho(LimparCarrinhoReq(ids))
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro limpar")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun listarCarrinho(usuarioId: Int? = null): NetworkResult<List<CarrinhoItem>> {
-        return try {
-            val response = api.listarCarrinho(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro carrinho")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun getParametros(usuarioId: Int? = null): NetworkResult<ParametrosOperacionais> {
-        return try {
-            val response = api.getParametros(usuarioId)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro parÃ¢metros")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun configurarRobo(request: ParametrosOperacionais): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.configurarRobo(request)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro configurar")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun editarUsuario(request: EditarContaRequest): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.editarUsuario(request)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro editar")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
-
-    suspend fun deletarUsuario(request: DeletarContaRequest): NetworkResult<GenericResponse> {
-        return try {
-            val response = api.deletarUsuario(request)
-            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro deletar")
-        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
-    }
+    // --- MÉTODOS EXISTENTES ---
 
     suspend fun login(request: LoginRequest): NetworkResult<LoginResponse> {
         return try {
             val response = api.login(request)
             if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro login")
+            else NetworkResult.Error("Erro no login")
         } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
     }
 
@@ -381,7 +182,7 @@ class MarketRepository @Inject constructor(
         return try {
             val response = api.solicitarCadastro(request)
             if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro solicitar")
+            else NetworkResult.Error("Erro na solicitação")
         } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
     }
 
@@ -389,7 +190,317 @@ class MarketRepository @Inject constructor(
         return try {
             val response = api.validarCadastro(request)
             if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
-            else NetworkResult.Error("Erro validar")
+            else NetworkResult.Error("Erro na validação")
         } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun listarUsuarios(): NetworkResult<List<UsuarioResumo>> {
+        return try {
+            val response = api.listarUsuarios()
+            if (response.isSuccessful) NetworkResult.Success(response.body() ?: emptyList())
+            else NetworkResult.Error("Erro ao listar usuários")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun obterInfoUsuario(id: Int? = null): NetworkResult<UsuarioResumo> {
+        return try {
+            val response = api.obterInfoUsuario(id)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao obter info do usuário")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun editarUsuario(request: EditarContaRequest): NetworkResult<GenericResponse> {
+        return try {
+            val response = api.editarUsuario(request)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao editar usuário")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun deletarUsuario(id: Int): NetworkResult<GenericResponse> {
+        return try {
+            val response = api.deletarUsuario(DeletarContaRequest(id))
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao deletar usuário")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun listarPerfis(): NetworkResult<List<PerfilInvestidor>> {
+        return try {
+            val response = api.listarPerfis()
+            if (response.isSuccessful) NetworkResult.Success(response.body() ?: emptyList())
+            else NetworkResult.Error("Erro ao listar perfis")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getCarteira(usuarioId: Int? = null, moeda: String? = null): NetworkResult<CarteiraResponse> {
+        return try {
+            val response = api.getCarteira(usuarioId, moeda)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao obter carteira")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getResumoDashboard(usuarioId: Int): NetworkResult<ResumoDashboard> {
+        return try {
+            val response = api.getResumoDashboard(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro no resumo do dashboard")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getDashboardMacro(): NetworkResult<MacroResponse> {
+        return try {
+            val response = api.getDashboardMacro()
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro no dashboard macro")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getDashboardHistorico(usuarioId: Int): NetworkResult<List<PontoHistorico>> {
+        return try {
+            val response = api.getDashboardHistorico(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro no histórico do dashboard")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun enviarOrdem(request: OrdemRequest): NetworkResult<GenericResponse> {
+        return try {
+            val response = api.enviarOrdem(request)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao enviar ordem")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun togglePilotoAutomatico(request: TogglePilotoReq): NetworkResult<GenericResponse> {
+        return try {
+            val response = api.togglePilotoAutomatico(request)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao alternar piloto automático")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getHistoricoOrdens(usuarioId: Int? = null): NetworkResult<List<OrdemExecutada>> {
+        return try {
+            val response = api.getHistoricoOrdens(usuarioId)
+            if (response.isSuccessful && response.body() != null) {
+                NetworkResult.Success(response.body()!!.ordens ?: emptyList())
+            } else NetworkResult.Error("Erro ao carregar histórico")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun listarCarrinho(usuarioId: Int? = null): NetworkResult<List<CarrinhoItem>> {
+        return try {
+            val response = api.listarCarrinho(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao listar carrinho")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun limparCarrinho(ids: List<Int>): NetworkResult<GenericResponse> {
+        return try {
+            val response = api.limparCarrinho(LimparCarrinhoReq(ids))
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao limpar carrinho")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getParametros(usuarioId: Int? = null): NetworkResult<ParametrosOperacionais> {
+        return try {
+            val response = api.getParametros(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao obter parâmetros")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun configurarRobo(request: ParametrosOperacionais): NetworkResult<GenericResponse> {
+        return try {
+            val response = api.configurarRobo(request)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao configurar robô")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun listarLancamentos(usuarioId: Int): NetworkResult<List<ItemLancamento>> {
+        return try {
+            val response = api.listarLancamentos(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao listar lançamentos")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun listarLotes(usuarioId: Int): NetworkResult<List<LoteFiscal>> {
+        return try {
+            val response = api.listarLotes(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao listar lotes")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getResumoFiscal(usuarioId: Int, anoMes: String): NetworkResult<ResumoFiscalMensal> {
+        return try {
+            val response = api.getResumoFiscal(usuarioId, anoMes)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro no resumo fiscal")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getDetalhesAtivo(ticker: String): NetworkResult<AssetAnalysisResponse> {
+        return try {
+            val response = api.getDetalhesAtivo(ticker)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao obter detalhes do ativo")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun runBacktest(ticker: String): NetworkResult<BacktestResponse> {
+        return try {
+            val response = api.backtest(ticker)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao rodar backtest")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun runMonteCarlo(ticker: String): NetworkResult<MonteCarloResponse> {
+        return try {
+            val response = api.monteCarlo(ticker)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro ao rodar Monte Carlo")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getInstitucionalResumo(usuarioId: Int? = null): NetworkResult<ResumoEstrategia> {
+        return try {
+            val response = api.getInstitucionalResumo(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro no resumo institucional")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getCurvaCapital(usuarioId: Int? = null): NetworkResult<List<PontoCurvaCapital>> {
+        return try {
+            val response = api.getCurvaCapital(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro na curva de capital")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getReplayDecisao(usuarioId: Int? = null): NetworkResult<List<ReplayDecisao>> {
+        return try {
+            val response = api.getReplayDecisao(usuarioId)
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro no replay de decisão")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getAuditoriaMercado(): NetworkResult<AuditoriaResponse> {
+        return try {
+            val response = api.getAuditoriaMercado()
+            if (response.isSuccessful && response.body() != null) NetworkResult.Success(response.body()!!)
+            else NetworkResult.Error("Erro na auditoria")
+        } catch (e: Exception) { NetworkResult.Error("Falha na rede", e) }
+    }
+
+    suspend fun getNoticias(): NetworkResult<List<Noticia>> {
+        return try {
+            val listaNoticias = mutableListOf<Noticia>()
+            
+            // 1. GOOGLE NEWS - Macro Brasil (B3, Selic, Dólar)
+            val googleQuery = "B3 OR IBOVESPA OR Selic OR Dólar OR inflação when:1d"
+            val googleMacroRss = "https://news.google.com/rss/search?q=${java.net.URLEncoder.encode(googleQuery, "UTF-8")}&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+            val googleMacroUrl = "https://api.rss2json.com/v1/api.json?rss_url=${java.net.URLEncoder.encode(googleMacroRss, "UTF-8")}"
+            
+            // 2. GOOGLE FINANCE (Top Stories do Google News Finance)
+            val googleFinanceRss = "https://news.google.com/rss/topics/CAAqJggKIiBDQkFTRWdvSUwyMHZNRGx6TVdZU00xVnpSREp0ZUVnc0p3b0FQAQ?hl=pt-BR&gl=BR&ceid=BR:pt-419"
+            val googleFinanceUrl = "https://api.rss2json.com/v1/api.json?rss_url=${java.net.URLEncoder.encode(googleFinanceRss, "UTF-8")}"
+
+            // 3. YAHOO FINANCE - Brasil (Artigos exclusivos Yahoo Finanças BR)
+            val yahooBrRss = "https://news.google.com/rss/search?q=site:br.financas.yahoo.com+when:1d&hl=pt-BR&gl=BR&ceid=BR:pt-419"
+            
+            // 4. YAHOO FINANCE - Global (NYSE, NASDAQ, Fed)
+            val yahooGlobalRss = "https://finance.yahoo.com/news/rss"
+            
+            coroutineScope {
+                val googleMacroJob = async { newsApi.getGoogleNews(googleMacroUrl) }
+                val googleFinanceJob = async { newsApi.getGoogleNews(googleFinanceUrl) }
+                val yahooBrJob = async { newsApi.getGoogleNews("https://api.rss2json.com/v1/api.json?rss_url=${java.net.URLEncoder.encode(yahooBrRss, "UTF-8")}") }
+                val yahooGlobalJob = async { newsApi.getGoogleNews("https://api.rss2json.com/v1/api.json?rss_url=${java.net.URLEncoder.encode(yahooGlobalRss, "UTF-8")}") }
+
+                val respGoogleMacro = googleMacroJob.await()
+                if (respGoogleMacro.isSuccessful && respGoogleMacro.body()?.status == "ok") {
+                    respGoogleMacro.body()!!.items.forEach { item ->
+                        listaNoticias.add(Noticia(
+                            id = if (item.guid.isEmpty()) item.link else item.guid,
+                            titulo = item.title.substringBefore(" - "),
+                            resumo = item.description.replace(Regex("<[^>]*>"), "").trim(),
+                            fonte = "Google Finance (BR)",
+                            hora = item.pubDate,
+                            impacto = "MÉDIO",
+                            link = item.link
+                        ))
+                    }
+                }
+
+                val respGoogleFinance = googleFinanceJob.await()
+                if (respGoogleFinance.isSuccessful && respGoogleFinance.body()?.status == "ok") {
+                    respGoogleFinance.body()!!.items.forEach { item ->
+                        listaNoticias.add(Noticia(
+                            id = if (item.guid.isEmpty()) item.link else item.guid,
+                            titulo = item.title.substringBefore(" - "),
+                            resumo = item.description.replace(Regex("<[^>]*>"), "").trim(),
+                            fonte = "Google Finance",
+                            hora = item.pubDate,
+                            impacto = "ALTO",
+                            link = item.link
+                        ))
+                    }
+                }
+
+                val respYahooBr = yahooBrJob.await()
+                if (respYahooBr.isSuccessful && respYahooBr.body()?.status == "ok") {
+                    respYahooBr.body()!!.items.forEach { item ->
+                        listaNoticias.add(Noticia(
+                            id = if (item.guid.isEmpty()) item.link else item.guid,
+                            titulo = item.title.substringBefore(" - "),
+                            resumo = item.description.replace(Regex("<[^>]*>"), "").trim(),
+                            fonte = "Yahoo Finance (BR)",
+                            hora = item.pubDate,
+                            impacto = "ALTO",
+                            link = item.link
+                        ))
+                    }
+                }
+
+                val respYahooGlobal = yahooGlobalJob.await()
+                if (respYahooGlobal.isSuccessful && respYahooGlobal.body()?.status == "ok") {
+                    respYahooGlobal.body()!!.items.forEach { item ->
+                        listaNoticias.add(Noticia(
+                            id = if (item.guid.isEmpty()) item.link else item.guid,
+                            titulo = item.title,
+                            resumo = item.description.replace(Regex("<[^>]*>"), "").trim(),
+                            fonte = "Yahoo Finance Global",
+                            hora = item.pubDate,
+                            impacto = "ALTO",
+                            link = item.link
+                        ))
+                    }
+                }
+            }
+
+            if (listaNoticias.isNotEmpty()) {
+                val finalNews = listaNoticias
+                    .distinctBy { it.titulo.lowercase().trim() }
+                    .sortedByDescending { it.hora }
+                
+                Log.d("QuantAdvisor", "Notícias Unificadas (Google/Yahoo): ${finalNews.size}")
+                NetworkResult.Success(finalNews)
+            } else {
+                NetworkResult.Error("Sem notícias disponíveis no momento.")
+            }
+        } catch (e: Exception) { 
+            NetworkResult.Error("Falha na rede: ${e.message}", e) 
+        }
     }
 }

@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import quantadvisor.com.br.SecurityManager
+import quantadvisor.com.br.data.model.GenericResponse
 import quantadvisor.com.br.data.model.LoginRequest
+import quantadvisor.com.br.data.model.LoginResponse
 import quantadvisor.com.br.data.model.NetworkResult
 import quantadvisor.com.br.data.model.NovaContaRequest
 import quantadvisor.com.br.data.repository.MarketRepository
@@ -43,23 +45,23 @@ class LoginViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = repository.login(LoginRequest(login, senha))) {
-                is NetworkResult.Success -> {
-                    val response = result.data
+                is NetworkResult.Success<*> -> {
+                    val response = (result as NetworkResult.Success<LoginResponse>).data
                     if (response.sucesso && response.token != null) {
                         SecurityManager.salvarSessao(
                             getApplication(),
                             response.token,
                             response.usuario_id ?: 0,
-                            response.nome ?: "UsuÃ¡rio",
+                            response.nome ?: "Usuário",
                             response.role ?: "CLIENTE"
                         )
                         _uiState.update { it.copy(isLoading = false, isLoginSuccess = true) }
                     } else {
-                        _uiState.update { it.copy(isLoading = false, error = response.erro ?: "Credenciais invÃ¡lidas") }
+                        _uiState.update { it.copy(isLoading = false, error = response.erro ?: "Credenciais inválidas") }
                     }
                 }
                 is NetworkResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, error = "Erro de conexÃ£o: ${result.message}") }
+                    _uiState.update { it.copy(isLoading = false, error = "Erro de conexão: ${result.message}") }
                 }
                 NetworkResult.Loading -> {
                     _uiState.update { it.copy(isLoading = true) }
@@ -73,8 +75,8 @@ class LoginViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = repository.solicitarCadastro(request)) {
-                is NetworkResult.Success -> {
-                    val response = result.data
+                is NetworkResult.Success<*> -> {
+                    val response = (result as NetworkResult.Success<GenericResponse>).data
                     if (response.sucesso) {
                         _uiState.update { it.copy(
                             isLoading = false,

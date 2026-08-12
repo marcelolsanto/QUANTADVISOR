@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import quantadvisor.com.br.data.model.MonteCarloResponse
 import quantadvisor.com.br.data.model.NetworkResult
 import quantadvisor.com.br.data.repository.MarketRepository
 import javax.inject.Inject
@@ -41,8 +42,8 @@ class MonteCarloViewModel @Inject constructor(
 
         viewModelScope.launch {
             when (val result = repository.runMonteCarlo(ticker)) {
-                is NetworkResult.Success -> {
-                    val resp = result.data
+                is NetworkResult.Success<*> -> {
+                    val resp = (result as NetworkResult.Success<MonteCarloResponse>).data
                     if (resp.sucesso) {
                         _uiState.update { it.copy(
                             isLoading = false,
@@ -51,7 +52,7 @@ class MonteCarloViewModel @Inject constructor(
                             densityPoints = generateGaussianPoints()
                         )}
                     } else {
-                        _uiState.update { it.copy(isLoading = false, errorMessage = resp.erro ?: "Erro na simulaÃ§Ã£o") }
+                        _uiState.update { it.copy(isLoading = false, errorMessage = resp.erro ?: "Erro na simulação") }
                     }
                 }
                 is NetworkResult.Error -> {

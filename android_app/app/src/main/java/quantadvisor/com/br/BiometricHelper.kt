@@ -17,7 +17,7 @@ object BiometricHelper {
 
     fun showBiometricPrompt(
         activity: FragmentActivity,
-        title: String = "AutenticaÃ§Ã£o NecessÃ¡ria",
+        title: String = "Autenticação Necessária",
         subtitle: String = "Confirme sua identidade para continuar",
         onSuccess: () -> Unit,
         onError: (String) -> Unit
@@ -37,7 +37,7 @@ object BiometricHelper {
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    // Tentativa falhou, mas o prompt continua aberto atÃ© erro ou sucesso
+                    // Tentativa falhou, mas o prompt continua aberto até erro ou sucesso
                 }
             })
 

@@ -27,7 +27,7 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = SurfaceContainerLow
 )
 
-private val LightColorScheme = DarkColorScheme // O app Ã© focado em Dark Mode Institucional
+private val LightColorScheme = DarkColorScheme // O app é focado em Dark Mode Institucional
 
 @Composable
 fun QuantAdvisorTheme(

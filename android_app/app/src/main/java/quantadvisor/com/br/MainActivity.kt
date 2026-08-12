@@ -18,7 +18,7 @@ class MainActivity : FragmentActivity() {
 
         setContent {
             val tokenSalvo = SecurityManager.getToken(this)
-            val startDest = if (tokenSalvo != null) NavRoutes.Perfil.route else NavRoutes.Login.route
+            val startDest = if (tokenSalvo != null) NavRoutes.Crm.route else NavRoutes.Login.route
 
             Surface(
                 modifier = Modifier.fillMaxSize(),

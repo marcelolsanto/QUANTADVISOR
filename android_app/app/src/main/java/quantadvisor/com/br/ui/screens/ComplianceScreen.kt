@@ -61,14 +61,14 @@ fun ComplianceScreen(
                     IconButton(onClick = onAccountingClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
-                            contentDescription = "ContÃ¡bil",
+                            contentDescription = "Contábil",
                             tint = PrimaryColor
                         )
                     }
                     IconButton(onClick = { }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.TrendingDown,
-                            contentDescription = "TendÃªncia",
+                            contentDescription = "Tendência",
                             tint = PrimaryColor
                         )
                     }
@@ -86,7 +86,7 @@ fun ComplianceScreen(
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Timeline, contentDescription = null) },
-                    label = { Text("PortfÃ³lio") },
+                    label = { Text("Portfólio") },
                     selected = false,
                     onClick = onPortfolioClick
                 )
@@ -132,7 +132,7 @@ fun ComplianceScreen(
                     // DARF Calculation Section
                     MonthlySummarySection(state)
 
-                    // Ledger (Livro DiÃ¡rio)
+                    // Ledger (Livro Diário)
                     LedgerSection()
 
                     Spacer(Modifier.height(16.dp))
@@ -172,7 +172,7 @@ fun ComplianceHeaderSection(state: ComplianceUiState.Success) {
                 Icon(if(resumo?.isento_swing == true) Icons.Default.VerifiedUser else Icons.Default.ReportProblem, null, tint = if(resumo?.isento_swing == true) CompraColor else VendaColor)
                 Column {
                     Text(
-                        "STATUS DE ISENÃ‡ÃƒO (AÃ‡Ã•ES)",
+                        "STATUS DE ISENÇÃO (AÇÕES)",
                         color = TextMuted,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
@@ -233,7 +233,7 @@ fun MonthlySummarySection(state: ComplianceUiState.Success) {
         ) {
             Icon(Icons.Default.PictureAsPdf, null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
-            Text("EXPORTAR RELATÃ“RIO PDF", fontWeight = FontWeight.Bold)
+            Text("EXPORTAR RELATÓRIO PDF", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -320,7 +320,7 @@ fun TaxRowItem(label: String, value: String, valueColor: Color) {
 fun LedgerSection() {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            "LIVRO DIÃRIO (RECENTES)",
+            "LIVRO DIÁRIO (RECENTES)",
             color = TextMuted,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
@@ -340,7 +340,7 @@ fun LedgerSection() {
                         .padding(12.dp)
                 ) {
                     Text("DATA/ATIVO", Modifier.weight(1.5f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Text("LANÃ‡AMENTO", Modifier.weight(1.5f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
+                    Text("LANÇAMENTO", Modifier.weight(1.5f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.End)
                     Text("STATUS B3", Modifier.weight(1.2f), color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
                 }
 

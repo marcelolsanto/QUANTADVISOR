@@ -7,7 +7,7 @@ import retrofit2.http.*
 interface QuantApiService {
 
     // ==========================================
-    // AUTENTICAÃ‡ÃƒO E USUÃRIOS
+    // AUTENTICAÇÃO E USUÁRIOS
     // ==========================================
     @POST("login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
@@ -24,6 +24,9 @@ interface QuantApiService {
     @GET("usuario")
     suspend fun obterInfoUsuario(@Query("id") id: Int? = null): Response<UsuarioResumo>
 
+    @POST("usuarios/criar")
+    suspend fun criarUsuario(@Body request: NovaContaRequest): Response<GenericResponse>
+
     @POST("usuarios/editar")
     suspend fun editarUsuario(@Body request: EditarContaRequest): Response<GenericResponse>
 
@@ -34,10 +37,13 @@ interface QuantApiService {
     suspend fun listarPerfis(): Response<List<PerfilInvestidor>>
 
     // ==========================================
-    // DASHBOARD E PORTFÃ“LIO
+    // DASHBOARD E PORTFÓLIO
     // ==========================================
     @GET("carteira")
-    suspend fun getCarteira(@Query("usuario_id") usuarioId: Int? = null): Response<CarteiraResponse>
+    suspend fun getCarteira(
+        @Query("usuario_id") usuarioId: Int? = null,
+        @Query("moeda") moeda: String? = null
+    ): Response<CarteiraResponse>
 
     @GET("dashboard/resumo")
     suspend fun getResumoDashboard(@Query("usuario_id") usuarioId: Int): Response<ResumoDashboard>
@@ -55,7 +61,7 @@ interface QuantApiService {
     suspend fun getDashboardHistoricoAtivos(@Query("usuario_id") usuarioId: Int): Response<List<Map<String, Any>>>
 
     // ==========================================
-    // OPERAÃ‡Ã•ES E TERMINAL
+    // OPERAÇÕES E TERMINAL
     // ==========================================
     @GET("auditoria")
     suspend fun getAuditoriaMercado(): Response<AuditoriaResponse>
@@ -70,7 +76,7 @@ interface QuantApiService {
     suspend fun togglePilotoAutomatico(@Body request: TogglePilotoReq): Response<GenericResponse>
 
     @GET("historico")
-    suspend fun getHistoricoOrdens(@Query("usuario_id") usuarioId: Int? = null): Response<List<OrdemExecutada>>
+    suspend fun getHistoricoOrdens(@Query("usuario_id") usuarioId: Int? = null): Response<HistoricoResponse>
 
     @GET("carrinho")
     suspend fun listarCarrinho(@Query("usuario_id") usuarioId: Int? = null): Response<List<CarrinhoItem>>
@@ -115,7 +121,10 @@ interface QuantApiService {
     suspend fun monteCarlo(@Query("ticker") ticker: String): Response<MonteCarloResponse>
 
     @POST("otimizar")
-    suspend fun otimizarCarteira(@Query("usuario_id") usuarioId: Int): Response<GenericResponse>
+    suspend fun otimizarCarteira(
+        @Query("usuario_id") usuarioId: Int,
+        @Query("moeda") moeda: String = "BRL"
+    ): Response<GenericResponse>
 
     @GET("portfolio/projecao")
     suspend fun getPortfolioProjecao(@Query("usuario_id") usuarioId: Int? = null): Response<ProjecaoResponse>
@@ -137,6 +146,18 @@ interface QuantApiService {
 
     @GET("institucional/replay")
     suspend fun getReplayDecisao(@Query("usuario_id") usuarioId: Int? = null): Response<List<ReplayDecisao>>
+
+    // ==========================================
+    // WALLET & HFT (NEW)
+    // ==========================================
+    @GET("wallet/buying-power")
+    suspend fun getBuyingPower(): Response<BuyingPowerResponse>
+
+    @GET("hft/signals")
+    suspend fun getSinaisHFT(): Response<List<SignalHFTResponse>>
+
+    @GET("hft/twap-history")
+    suspend fun getExecucoesTWAP(): Response<List<TWAPExecutionResponse>>
 }
 
 interface ExternalNewsApi {

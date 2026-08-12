@@ -45,8 +45,8 @@ class ComplianceViewModel @Inject constructor(
             val result = repository.getResumoFiscal(uid, currentAnoMes)
             
             when (result) {
-                is NetworkResult.Success -> {
-                    _uiState.value = ComplianceUiState.Success(result.data, currentAnoMes)
+                is NetworkResult.Success<*> -> {
+                    _uiState.value = ComplianceUiState.Success((result as NetworkResult.Success<ResumoFiscalMensal>).data, currentAnoMes)
                 }
                 is NetworkResult.Error -> {
                     _uiState.value = ComplianceUiState.Error(result.message)

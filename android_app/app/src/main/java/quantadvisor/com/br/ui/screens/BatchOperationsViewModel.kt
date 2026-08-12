@@ -55,11 +55,11 @@ class BatchOperationsViewModel @Inject constructor(
             
             val result = repository.limparCarrinho(ids)
             when (result) {
-                is NetworkResult.Success -> {
+                is NetworkResult.Success<*> -> {
                     _uiState.update { it.copy(cartItems = emptyList(), isExecuting = false, message = "Lote executado com sucesso!") }
                 }
                 is NetworkResult.Error -> {
-                    _uiState.update { it.copy(isExecuting = false, message = "Erro na execuÃ§Ã£o: ${result.message}") }
+                    _uiState.update { it.copy(isExecuting = false, message = "Erro na execução: ${result.message}") }
                 }
                 else -> {}
             }

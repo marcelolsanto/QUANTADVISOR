@@ -77,7 +77,7 @@ fun PerfilGestorScreen(
                     IconButton(onClick = { }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.TrendingDown,
-                            contentDescription = "TendÃªncia",
+                            contentDescription = "Tendência",
                             tint = TextMuted
                         )
                     }
@@ -94,7 +94,7 @@ fun PerfilGestorScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            // SeÃ§Ã£o: Identidade do UsuÃ¡rio
+            // Seção: Identidade do Usuário
             item {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -171,7 +171,7 @@ fun PerfilGestorScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            // Card de Saldo com LÃ³gica de Cor
+                            // Card de Saldo com Lógica de Cor
                             val saldo = uiState.user!!.saldo_disponivel ?: 0.0
                             val saldoColor = when {
                                 saldo > 0 -> CompraColor
@@ -196,7 +196,7 @@ fun PerfilGestorScreen(
                                 }
                             }
 
-                            // Card de Lucro com LÃ³gica de Cor
+                            // Card de Lucro com Lógica de Cor
                             val lucro = uiState.user!!.lucro_acumulado ?: 0.0
                             val lucroColor = when {
                                 lucro > 0 -> CompraColor
@@ -225,7 +225,7 @@ fun PerfilGestorScreen(
                 }
             }
 
-            // SeÃ§Ã£o: JurisdiÃ§Ã£o de OperaÃ§Ã£o
+            // Seção: Jurisdição de Operação
             item {
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Row(
@@ -240,7 +240,7 @@ fun PerfilGestorScreen(
                             modifier = Modifier.size(16.dp)
                         )
                         Text(
-                            text = "JURISDIÃ‡ÃƒO DE OPERAÃ‡ÃƒO",
+                            text = "JURISDIÇÃO DE OPERAÇÃO",
                             color = TextMuted,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
@@ -275,14 +275,14 @@ fun PerfilGestorScreen(
                 }
             }
 
-            // SeÃ§Ã£o: ConfiguraÃ§Ãµes / Itens do Menu
+            // Seção: Configurações / Itens do Menu
             item {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "CONFIGURAÃ‡Ã•ES",
+                        text = "CONFIGURAÇÕES",
                         color = TextMuted,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -296,17 +296,10 @@ fun PerfilGestorScreen(
                         subtitle = "Dados pessoais e credenciais",
                         onClick = { uiState.user?.let { onEditProfileClick(it) } }
                     )
-
-                    ConfigMenuItem(
-                        icon = Icons.Default.Settings,
-                        title = "Calibrar Meu RobÃ´",
-                        subtitle = "Ajuste de sensibilidade e risco",
-                        onClick = { uiState.user?.let { onCalibrateRobotClick(it) } }
-                    )
                 }
             }
 
-            // BotÃ£o Sair (Logout)
+            // Botão Sair (Logout)
             item {
                 Button(
                     onClick = { viewModel.logout() },
@@ -340,7 +333,7 @@ fun PerfilGestorScreen(
                 }
             }
 
-            // RodapÃ© / VersÃ£o
+            // Rodapé / Versão
             item {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,

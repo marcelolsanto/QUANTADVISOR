@@ -38,19 +38,12 @@ class NewsViewModel @Inject constructor(
         _state.update { it.copy(isLoading = true, errorMessage = null) }
         viewModelScope.launch {
             when (val result = repository.getNoticias()) {
-                is NetworkResult.Success -> {
-                    var finalNews = result.data
-                    if (finalNews.isEmpty()) {
-                        finalNews = listOf(
-                            Noticia("1", "Copom mantÃ©m taxa Selic a 10.50%", "O comitÃª destacou que a inflaÃ§Ã£o permanece em nÃ­veis de alerta, exigindo cautela na polÃ­tica monetÃ¡ria.", "Valor EconÃ´mico", "10:30", "ALTO"),
-                            Noticia("2", "Nvidia reporta lucros recordes", "A gigante dos chips superou as expectativas de Wall Street impulsionada pela demanda de IA.", "Bloomberg", "09:15", "MÃ‰DIO"),
-                            Noticia("3", "Ibovespa opera em leve alta", "Mercado reage positivamente aos dados de emprego vindos dos EUA.", "InfoMoney", "11:45", "BAIXO")
-                        )
-                    }
+                is NetworkResult.Success<*> -> {
+                    val finalNews = (result as NetworkResult.Success<List<Noticia>>).data
                     _state.update { it.copy(news = finalNews, isLoading = false) }
                 }
                 is NetworkResult.Error -> {
-                    _state.update { it.copy(errorMessage = "Erro ao carregar notÃ­cias: ${result.message}", isLoading = false) }
+                    _state.update { it.copy(errorMessage = "Erro ao carregar notícias: ${result.message}", isLoading = false) }
                 }
                 NetworkResult.Loading -> {
                     _state.update { it.copy(isLoading = true) }

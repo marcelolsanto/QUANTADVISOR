@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import quantadvisor.com.br.data.model.PontoHistorico
+import quantadvisor.com.br.ui.components.MarketToggle
 import quantadvisor.com.br.ui.theme.*
 import java.util.Locale
 
@@ -39,6 +40,7 @@ fun GlobalManagementScreen(
     viewModel: GlobalViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val currentMarket by viewModel.marketSession.currentMarket.collectAsState()
 
     Scaffold(
         containerColor = BgBackground,
@@ -53,7 +55,7 @@ fun GlobalManagementScreen(
                             modifier = Modifier.size(24.dp)
                         )
                         Text(
-                            "GestÃ£o Global",
+                            "Gestão Global",
                             color = PrimaryColor,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp
@@ -85,7 +87,7 @@ fun GlobalManagementScreen(
                     IconButton(onClick = onInstitutionalClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.TrendingDown,
-                            contentDescription = "TendÃªncia",
+                            contentDescription = "Tendência",
                             tint = TextMuted
                         )
                     }
@@ -103,7 +105,7 @@ fun GlobalManagementScreen(
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Timeline, contentDescription = null) },
-                    label = { Text("PortfÃ³lio") },
+                    label = { Text("Portfólio") },
                     selected = true,
                     onClick = onPortfolioClick
                 )
@@ -143,8 +145,16 @@ fun GlobalManagementScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
+                    // MARKET TOGGLE
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        MarketToggle(
+                            currentMarket = currentMarket,
+                            onMarketChange = { viewModel.marketSession.setMarket(it) }
+                        )
+                    }
+
                     // AUM Summary Grid
-                    AumSummarySection(state)
+                    AumSummarySection(state, currentMarket)
 
                     // Market Regime Indicator
                     MarketRegimeSection(state.macro?.regime_atual ?: "ANALISANDO")
@@ -153,7 +163,7 @@ fun GlobalManagementScreen(
                     EvolutionChartSection(state.history)
 
                     // Top Clients List
-                    TopClientsSection()
+                    TopClientsSection(state.macro?.clientes)
 
                     Spacer(Modifier.height(16.dp))
                 }
@@ -163,9 +173,12 @@ fun GlobalManagementScreen(
 }
 
 @Composable
-fun AumSummarySection(state: GlobalUiState.Success) {
+fun AumSummarySection(state: GlobalUiState.Success, currentMarket: String) {
     val dash = state.dashboard
     val macro = state.macro
+    val symbol = if (currentMarket == "USD") "$" else "R$"
+    val locale = if (currentMarket == "USD") Locale.US else Locale.GERMANY
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Total AUM Card
         Card(
@@ -177,10 +190,10 @@ fun AumSummarySection(state: GlobalUiState.Success) {
                 Box(Modifier.width(4.dp).height(100.dp).align(Alignment.CenterStart).background(PrimaryColor))
                 Column(Modifier.padding(16.dp).padding(start = 8.dp)) {
                     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                        Text("TOTAL AUM (BRL)", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Text("TOTAL AUM ($currentMarket)", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
                         Icon(Icons.Default.Public, null, Modifier.size(16.dp), tint = PrimaryColor)
                     }
-                    Text("R$ ${String.format(Locale.GERMANY, "%,.0f", dash?.patrimonio_total ?: 0.0)}", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
+                    Text("$symbol ${String.format(locale, "%,.2f", dash?.patrimonio_total ?: 0.0)}", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.Default.ArrowUpward, null, Modifier.size(14.dp), tint = CompraColor)
                         Text("+2.4% (YTD)", color = CompraColor, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -198,8 +211,8 @@ fun AumSummarySection(state: GlobalUiState.Success) {
                 Box(Modifier.fillMaxWidth()) {
                     Box(Modifier.width(4.dp).height(80.dp).align(Alignment.CenterStart).background(CompraColor))
                     Column(Modifier.padding(12.dp).padding(start = 6.dp)) {
-                        Text("DÃ“LAR (USD)", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        Text("R$ ${String.format(Locale.GERMANY, "%.2f", macro?.cotacao_dolar_ativa ?: 0.0)}", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
+                        Text("DÓLAR (USD)", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                        Text("R$ ${String.format(Locale.GERMANY, "%,.2f", macro?.cotacao_dolar_ativa ?: 0.0)}", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                         Text("Comercial", color = TextMuted, fontSize = 10.sp)
                     }
                 }
@@ -230,8 +243,8 @@ fun AumSummarySection(state: GlobalUiState.Success) {
                     Box(Modifier.width(4.dp).height(80.dp).align(Alignment.CenterStart).background(PrimaryColor))
                     Column(Modifier.padding(12.dp).padding(start = 6.dp)) {
                         Text("CAIXA LIVRE", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        Text("R$ ${String.format(Locale.GERMANY, "%,.1f", dash?.caixa_livre ?: 0.0)}", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
-                        Text("DisponÃ­vel", color = TextMuted, fontSize = 10.sp)
+                        Text("$symbol ${String.format(locale, "%,.2f", dash?.caixa_livre ?: 0.0)}", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
+                        Text("Disponível", color = TextMuted, fontSize = 10.sp)
                     }
                 }
             }
@@ -245,7 +258,7 @@ fun AumSummarySection(state: GlobalUiState.Success) {
                     Box(Modifier.width(4.dp).height(80.dp).align(Alignment.CenterStart).background(CompraColor))
                     Column(Modifier.padding(12.dp).padding(start = 6.dp)) {
                         Text("ALOCADO", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                        Text("R$ ${String.format(Locale.GERMANY, "%,.1f", dash?.custo_aquisicao ?: 0.0)}", color = CompraColor, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
+                        Text("$symbol ${String.format(locale, "%,.2f", dash?.custo_aquisicao ?: 0.0)}", color = CompraColor, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace)
                         Text("MtM", color = TextMuted, fontSize = 10.sp)
                     }
                 }
@@ -269,7 +282,7 @@ fun MarketRegimeSection(regime: String) {
                 Text("MARKET REGIME HMM", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(regime.uppercase(), color = color, fontSize = 16.sp, fontWeight = FontWeight.ExtraBold)
-                    Text(if(isBear) "ðŸ»" else "ðŸ‚", fontSize = 18.sp)
+                    Text(if(isBear) "🐻" else "🐂", fontSize = 18.sp)
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -289,7 +302,7 @@ fun EvolutionChartSection(history: List<PontoHistorico>) {
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Text("EVOLUÃ‡ÃƒO AUM", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text("EVOLUÇÃO AUM", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("1M", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { })
                     Surface(color = SurfaceContainerHighest, shape = RoundedCornerShape(4.dp)) {
@@ -351,13 +364,28 @@ fun EvolutionChartSection(history: List<PontoHistorico>) {
 }
 
 @Composable
-fun TopClientsSection() {
+fun TopClientsSection(clientesReais: List<quantadvisor.com.br.data.model.UsuarioResumo>?) {
     Column {
         Text("TOP CLIENTES ATIVOS", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 12.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ClientPerformanceRow("Fundo Alpha Multimercado", "Aggressive", "R$ 450.2M", "+1.2%", CompraColor)
-            ClientPerformanceRow("Beta Institucional FIA", "Moderate", "R$ 380.5M", "+4.5%", CompraColor)
-            ClientPerformanceRow("Gama Global Macro", "Global", "R$ 210.0M", "+0.8%", CompraColor)
+        
+        if (clientesReais.isNullOrEmpty()) {
+            Text("Nenhum cliente com alocação no momento.", color = TextMuted, fontSize = 12.sp, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                clientesReais.take(3).forEach { cliente ->
+                    val lucro = cliente.lucro_acumulado ?: 0.0
+                    val cor = if (lucro >= 0) CompraColor else VendaColor
+                    val sinal = if (lucro >= 0) "+" else ""
+                    
+                    ClientPerformanceRow(
+                        name = cliente.nome ?: "Usuário",
+                        risk = cliente.perfil_risco ?: "N/A",
+                        amount = "R$ ${String.format(java.util.Locale.GERMANY, "%,.2f", cliente.saldo_disponivel ?: 0.0)}",
+                        perf = "$sinal R$ ${String.format(java.util.Locale.GERMANY, "%,.2f", lucro)}",
+                        color = cor
+                    )
+                }
+            }
         }
     }
 }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import quantadvisor.com.br.data.model.*
 import quantadvisor.com.br.data.repository.MarketRepository
+import quantadvisor.com.br.session.MarketSession
 import javax.inject.Inject
 
 data class GestaoUiState(
@@ -26,7 +27,8 @@ data class GestaoUiState(
 
 @HiltViewModel
 class GestaoViewModel @Inject constructor(
-    private val repository: MarketRepository
+    private val repository: MarketRepository,
+    val marketSession: MarketSession
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(GestaoUiState())
@@ -61,24 +63,15 @@ class GestaoViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
             
-            val usuariosDeferred = async { repository.listarUsuarios() }
-            val perfisDeferred = async { repository.listarPerfis() }
+            val usuariosDeferred = async<NetworkResult<List<UsuarioResumo>>> { repository.listarUsuarios() }
+            val perfisDeferred = async<NetworkResult<List<PerfilInvestidor>>> { repository.listarPerfis() }
             
             val usuariosResult = usuariosDeferred.await()
             val perfisResult = perfisDeferred.await()
 
-            if (usuariosResult is NetworkResult.Success) {
-                var users = usuariosResult.data
-                val perfisList = perfisResult.getOrNull() ?: emptyList()
-
-                if (users.isEmpty()) {
-                    users = listOf(
-                        UsuarioResumo(1, "admin", "Administrador Master", role = "GESTOR", saldo_disponivel = 2850400.0, perfil_risco = "Agressivo", ultimaOperacao = "2026-08-01", volumeNegociado = 1500000.0),
-                        UsuarioResumo(2, "itau_inst", "Fundo ItaÃº Institucional", role = "CLIENTE", saldo_disponivel = 12400500.0, perfil_risco = "Moderado", ultimaOperacao = "2026-07-28", volumeNegociado = 5000000.0),
-                        UsuarioResumo(3, "btg_pactual", "BTG Pactual Yield", role = "CLIENTE", saldo_disponivel = 560000.0, perfil_risco = "Arrojado", ultimaOperacao = "2026-07-30", volumeNegociado = 800000.0),
-                        UsuarioResumo(4, "varejo_01", "JoÃ£o Silva", role = "CLIENTE", saldo_disponivel = 1500.0, perfil_risco = "Conservador", ultimaOperacao = "2026-06-15", volumeNegociado = 12000.0)
-                    )
-                }
+            if (usuariosResult is NetworkResult.Success<*>) {
+                val users = (usuariosResult as NetworkResult.Success<List<UsuarioResumo>>).data
+                val perfisList = (perfisResult as? NetworkResult.Success<List<PerfilInvestidor>>)?.data ?: emptyList()
 
                 _state.update { it.copy(
                     isLoading = false,
@@ -103,8 +96,8 @@ class GestaoViewModel @Inject constructor(
 
     fun deletarUsuario(userId: Int) {
         viewModelScope.launch {
-            val result = repository.deletarUsuario(DeletarContaRequest(userId))
-            if (result is NetworkResult.Success) {
+            val result = repository.deletarUsuario(userId)
+            if (result is NetworkResult.Success<*>) {
                 _state.update { it.copy(clients = it.clients.filter { user -> user.id != userId }) }
             }
         }

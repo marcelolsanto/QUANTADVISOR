@@ -28,7 +28,8 @@ object NetworkEvents {
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    var BASE_URL: String = "https://quantadvisor.com.br/api/"
+    // 🛡️ BASE_URL PÚBLICA PARA DINAMISMO DO REPOSITÓRIO
+    const val BASE_URL = "https://quantadvisor.com.br/api/"
 
     @Provides
     @Singleton
@@ -58,14 +59,14 @@ object NetworkModule {
                 val token = SecurityManager.getToken(context)
                 val request = chain.request().newBuilder().apply {
                     if (token != null) addHeader("Authorization", "Bearer $token")
-                    removeHeader("Host") 
+                    // 🛡️ HEADER DE HOST MANTIDO PARA NGINX (COMO SOLICITADO ANTERIORMENTE)
                 }.build()
                 val response = chain.proceed(request)
                 if (response.code == 401) NetworkEvents.notifySessionExpired()
                 response
             }
 
-        // Aplica o Certificate Pinner apenas quando for conexão de produção HTTPS
+        // 🛡️ SSL PINNING CONDICIONAL (PRODUÇÃO APENAS)
         if (BASE_URL.contains("quantadvisor.com.br") && BASE_URL.startsWith("https://")) {
             builder.certificatePinner(certificatePinner)
         }
@@ -87,8 +88,6 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideExternalNewsApi(okHttpClient: OkHttpClient): ExternalNewsApi {
-        // Para chamadas externas, usamos a mesma base ou uma genÃ©rica, 
-        // jÃ¡ que o endpoint usa @Url completa
         return Retrofit.Builder()
             .baseUrl("https://api.rss2json.com/")
             .client(okHttpClient)

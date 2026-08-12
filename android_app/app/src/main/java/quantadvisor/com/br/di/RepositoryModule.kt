@@ -1,8 +1,10 @@
 package quantadvisor.com.br.di
 
+import android.content.Context
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import okhttp3.OkHttpClient
 import quantadvisor.com.br.data.api.ExternalNewsApi
@@ -20,8 +22,9 @@ object RepositoryModule {
     fun provideMarketRepository(
         api: QuantApiService,
         newsApi: ExternalNewsApi,
-        okHttpClient: OkHttpClient
+        okHttpClient: OkHttpClient,
+        @ApplicationContext context: Context
     ): MarketRepository {
-        return MarketRepository(api, newsApi, okHttpClient, Gson())
+        return MarketRepository(api, newsApi, okHttpClient, context, Gson())
     }
 }

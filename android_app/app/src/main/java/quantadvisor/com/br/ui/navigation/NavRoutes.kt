@@ -14,9 +14,15 @@ sealed class NavRoutes(val route: String) {
     object Institutional : NavRoutes("institutional")
     object Backtest : NavRoutes("backtest")
     object MonteCarlo : NavRoutes("monte_carlo")
-    object AssetAnalysis : NavRoutes("asset_analysis")
+    object AssetAnalysis : NavRoutes("asset_analysis/{ticker}") {
+        fun createRoute(ticker: String) = "asset_analysis/$ticker"
+    }
     object Portfolio : NavRoutes("portfolio")
     object BatchOperations : NavRoutes("batch_operations")
+    object AddUser : NavRoutes("add_user")
+    object Trade : NavRoutes("trade/{ticker}/{price}") {
+        fun createRoute(ticker: String, price: Double) = "trade/$ticker/$price"
+    }
     
     // Rotas com argumentos
     object EditUser : NavRoutes("edit_user/{userId}") {

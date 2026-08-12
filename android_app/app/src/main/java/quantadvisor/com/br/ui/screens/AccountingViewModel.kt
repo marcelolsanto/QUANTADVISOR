@@ -46,13 +46,13 @@ class AccountingViewModel @Inject constructor(
             val lancResult = repository.listarLancamentos(uid)
             val lotesResult = repository.listarLotes(uid)
             
-            if (lancResult is NetworkResult.Success && lotesResult is NetworkResult.Success) {
+            if (lancResult is NetworkResult.Success<*> && lotesResult is NetworkResult.Success<*>) {
                 _uiState.value = AccountingUiState.Success(
-                    lancamentos = lancResult.data,
-                    lotes = lotesResult.data
+                    lancamentos = (lancResult as NetworkResult.Success<List<ItemLancamento>>).data,
+                    lotes = (lotesResult as NetworkResult.Success<List<LoteFiscal>>).data
                 )
             } else {
-                _uiState.value = AccountingUiState.Error("Falha ao carregar dados contÃ¡beis")
+                _uiState.value = AccountingUiState.Error("Falha ao carregar dados contábeis")
             }
         }
     }

@@ -1,6 +1,7 @@
 package quantadvisor.com.br.ui.screens.crm
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,14 +40,18 @@ class PerfilViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val uid = SecurityManager.getUsuarioId(getApplication())
+                Log.d("QuantAdvisor", "Perfil: Carregando UID $uid")
                 val result = repository.obterInfoUsuario(uid)
                 if (result is NetworkResult.Success) {
+                    Log.d("QuantAdvisor", "Perfil: Sucesso ao carregar usuário ${result.data.nome}")
                     _uiState.update { it.copy(user = result.data, isLoading = false) }
                 } else {
+                    Log.e("QuantAdvisor", "Perfil: Erro ao carregar perfil")
                     _uiState.update { it.copy(errorMessage = "Erro ao carregar perfil", isLoading = false) }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = "Erro de conexÃ£o", isLoading = false) }
+                Log.e("QuantAdvisor", "Perfil: Crash ao carregar", e)
+                _uiState.update { it.copy(errorMessage = "Erro de conexão", isLoading = false) }
             }
         }
     }

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import quantadvisor.com.br.data.model.AtivoPatrimonio
+import quantadvisor.com.br.ui.components.MarketToggle
 import quantadvisor.com.br.ui.theme.*
 import java.util.Locale
 
@@ -28,16 +29,13 @@ fun PortfolioScreen(
     viewModel: PortfolioViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.loadPortfolio()
-    }
+    val currentMarket by viewModel.marketSession.currentMarket.collectAsState()
 
     Scaffold(
         containerColor = BgBackground,
         topBar = {
             TopAppBar(
-                title = { Text("PatrimÃ´nio & Carteira", fontWeight = FontWeight.Bold, color = PrimaryColor) },
+                title = { Text("Patrimônio & Carteira", fontWeight = FontWeight.Bold, color = PrimaryColor) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Voltar", tint = PrimaryColor)
@@ -61,16 +59,30 @@ fun PortfolioScreen(
                 contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp)
             ) {
                 item {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        MarketToggle(
+                            currentMarket = currentMarket,
+                            onMarketChange = { viewModel.marketSession.setMarket(it) }
+                        )
+                        Spacer(Modifier.height(16.dp))
+                    }
+                }
+
+                item {
                     WealthSummaryCard(
                         totalEquity = uiState.totalEquity,
-                        freeCash = uiState.user?.saldo_disponivel ?: 0.0,
-                        accumulatedProfit = uiState.user?.lucro_acumulado ?: 0.0
+                        freeCash = if(currentMarket == "USD") (uiState.user?.saldo_usd ?: 0.0) else (uiState.user?.saldo_disponivel ?: 0.0),
+                        accumulatedProfit = uiState.totalPl,
+                        moeda = currentMarket
                     )
                 }
 
                 item {
                     Text(
-                        "Ativos em Carteira",
+                        "Ativos em Carteira ($currentMarket)",
                         color = TextPrimary,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
@@ -78,7 +90,7 @@ fun PortfolioScreen(
                 }
 
                 items(uiState.assets) { asset ->
-                    AssetHoldingItem(asset)
+                    AssetHoldingItem(asset, currentMarket)
                 }
             }
         }
@@ -86,7 +98,10 @@ fun PortfolioScreen(
 }
 
 @Composable
-fun WealthSummaryCard(totalEquity: Double, freeCash: Double, accumulatedProfit: Double) {
+fun WealthSummaryCard(totalEquity: Double, freeCash: Double, accumulatedProfit: Double, moeda: String) {
+    val symbol = if (moeda == "USD") "$" else "R$"
+    val locale = if (moeda == "USD") Locale.US else Locale.GERMANY
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -95,12 +110,12 @@ fun WealthSummaryCard(totalEquity: Double, freeCash: Double, accumulatedProfit: 
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
             Text(
-                "PatrimÃ´nio Total",
+                "Patrimônio Total ($moeda)",
                 style = MaterialTheme.typography.labelMedium,
                 color = TextMuted
             )
             Text(
-                "R$ ${String.format(Locale.GERMANY, "%,.2f", totalEquity)}",
+                "$symbol ${String.format(locale, "%,.2f", totalEquity)}",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Black,
                 color = TextPrimary
@@ -118,7 +133,7 @@ fun WealthSummaryCard(totalEquity: Double, freeCash: Double, accumulatedProfit: 
                         color = TextMuted
                     )
                     Text(
-                        "R$ ${String.format(Locale.GERMANY, "%,.2f", freeCash)}",
+                        "$symbol ${String.format(locale, "%,.2f", freeCash)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = CompraColor
@@ -126,12 +141,12 @@ fun WealthSummaryCard(totalEquity: Double, freeCash: Double, accumulatedProfit: 
                 }
                 Column(horizontalAlignment = Alignment.End) {
                     Text(
-                        "Lucro Realizado",
+                        "Lucro Realizado (P&L)",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextMuted
                     )
                     Text(
-                        "R$ ${String.format(Locale.GERMANY, "%,.2f", accumulatedProfit)}",
+                        "$symbol ${String.format(locale, "%,.2f", accumulatedProfit)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (accumulatedProfit >= 0) CompraColor else VendaColor
@@ -143,7 +158,10 @@ fun WealthSummaryCard(totalEquity: Double, freeCash: Double, accumulatedProfit: 
 }
 
 @Composable
-fun AssetHoldingItem(asset: AtivoPatrimonio) {
+fun AssetHoldingItem(asset: AtivoPatrimonio, moeda: String) {
+    val symbol = if (moeda == "USD") "$" else "R$"
+    val locale = if (moeda == "USD") Locale.US else Locale.GERMANY
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -159,16 +177,16 @@ fun AssetHoldingItem(asset: AtivoPatrimonio) {
         ) {
             Column {
                 Text(asset.ticker, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                Text("${asset.quantidade} un. â€¢ PM: R$ ${String.format(Locale.GERMANY, "%.2f", asset.preco_medio)}", color = TextMuted, style = MaterialTheme.typography.bodySmall)
+                Text("${asset.quantidade} un. • PM: $symbol ${String.format(locale, "%,.2f", asset.preco_medio)}", color = TextMuted, style = MaterialTheme.typography.bodySmall)
             }
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    "R$ ${String.format(Locale.GERMANY, "%,.2f", asset.quantidade * asset.preco_atual)}",
+                    "$symbol ${String.format(locale, "%,.2f", asset.quantidade * asset.preco_atual)}",
                     color = TextPrimary,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "${if (asset.lucro_prejuizo >= 0) "+" else ""}R$ ${String.format(Locale.GERMANY, "%.2f", asset.lucro_prejuizo)}",
+                    "${if (asset.lucro_prejuizo >= 0) "+" else ""}$symbol ${String.format(locale, "%,.2f", asset.lucro_prejuizo)}",
                     color = if (asset.lucro_prejuizo >= 0) CompraColor else VendaColor,
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold
