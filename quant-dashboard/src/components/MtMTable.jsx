@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect, memo } from 'react';
 import { AssetDeepDive } from './AssetDeepDive';
 import { TradeModal } from './TradeModal';
 import { theme } from '../theme';
+import { getSinalVisual } from '../utils/sinal';
 
 // 🌍 FUNÇÃO AUXILIAR DE MOEDA NATIVA
 const formatarMoedaNativa = (valor, ticker) => {
