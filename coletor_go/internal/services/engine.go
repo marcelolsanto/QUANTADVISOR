@@ -666,6 +666,12 @@ func enviarParaPythonEOperar(ticker string, urlPython string, payload []byte, fo
 		}
 
 		pyResp.Sinal = sinalDefinitivo
+		if pyResp.SinaisPerfil == nil {
+			pyResp.SinaisPerfil = make(map[string]string)
+		}
+		pyResp.SinaisPerfil["Arrojado"] = sinalDefinitivo
+		pyResp.SinaisPerfil["Moderado"] = sinalDefinitivo
+		pyResp.SinaisPerfil["Conservador"] = sinalDefinitivo
 		PersistirResultadoQuant(pyResp)
 
 		botResp := models.PythonResponse{
