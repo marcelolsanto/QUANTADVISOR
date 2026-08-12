@@ -29,13 +29,6 @@ export const LoginScreen = ({ onLoginSuccess }) => {
   // 1. Estado adicionado para guardar o código que vem do backend
   const [codigoDebug, setCodigoDebug] = useState('');
 
-  // ==============================================================
-  // 🛡️ REGRA DE SEGURANÇA: Sempre inicia o sistema deslogado
-  // ==============================================================
-  useEffect(() => {
-    realizarLogoutWeb(); // Limpa tokens e perfis do localStorage
-  }, []);
-
   const handleLogin = async (e) => {
     e.preventDefault();
     setErro('');
@@ -123,7 +116,7 @@ export const LoginScreen = ({ onLoginSuccess }) => {
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', textAlign: 'center', margin: '0 auto' }} className="mb-6">
           <img
-            src="/public/logo-completa.png"
+            src="/logo-completa.png"
             alt="Logo QuantAdvisor"
             style={{ display: 'block', margin: '0 auto 8px auto', maxWidth: '220px', width: '100%', height: 'auto' }}
             className="object-contain mix-blend-screen"

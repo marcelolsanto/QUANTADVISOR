@@ -24,18 +24,20 @@ import { theme } from './theme';
 import { Toaster, toast } from 'sonner';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return Boolean(localStorage.getItem('@QuantAdvisor:token_web'));
+  });
   const [usuarioLogado, setUsuarioLogado] = useState({
     nome: localStorage.getItem('@QuantAdvisor:nome_web') || '',
     role: localStorage.getItem('@QuantAdvisor:role_web') || ''
   });
 
-  const myUserId = Number(localStorage.getItem('@QuantAdvisor:user_id_web'));
+  const myUserId = Number(localStorage.getItem('@QuantAdvisor:user_id_web')) || 1;
   const isGestor = usuarioLogado.role === 'GESTOR' || myUserId === 1;
 
-  const [telaAtiva, setTelaAtiva] = useState(isGestor ? 'GESTAO' : 'TERMINAL');
-  const [contaAtiva, setContaAtiva] = useState(isGestor ? null : myUserId);
-  const [perfilContaAtiva, setPerfilContaAtiva] = useState('SOFISTICADO');
+  const [telaAtiva, setTelaAtiva] = useState('TERMINAL');
+  const [contaAtiva, setContaAtiva] = useState(myUserId || 1);
+  const [perfilContaAtiva, setPerfilContaAtiva] = useState('Agressivo');
 
   const [data, setData] = useState([]);
   const [regimeMercado, setRegimeMercado] = useState('ANALISANDO...');
