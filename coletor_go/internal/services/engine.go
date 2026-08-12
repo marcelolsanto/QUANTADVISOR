@@ -1232,15 +1232,14 @@ func executarSnapshotPatrimonial(dataFechamento time.Time) {
 	}
 	log.Printf("✅ [EOD] Fotografia Patrimonial concluída para o dia %s!", dataFormatada)
 
-	// Dispara notificação via SSE para o React atualizar os gráficos de gestão imediatamente
+	// Dispara notificação via Redis Pub/Sub para o SSE Hub do React atualizar os gráficos de gestão imediatamente
 	eodEvent, _ := json.Marshal(map[string]interface{}{
 		"tipo_evento":     "EOD_SNAPSHOT_FINALIZADO",
 		"data_fechamento": dataFormatada,
 		"timestamp":       time.Now().Format(time.RFC3339),
 	})
-	select {
-	case handlers.Broadcast <- eodEvent:
-	default:
+	if database.Rdb != nil {
+		database.Rdb.Publish(database.Ctx, "market_ticks", eodEvent)
 	}
 }
 
