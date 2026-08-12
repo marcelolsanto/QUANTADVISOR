@@ -7,18 +7,20 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq"
 )
 
-// Estruturas de Dados
 type Ordem struct {
 	DataHora   time.Time
 	Ticker     string
 	Tipo       string // "COMPRA" ou "VENDA"
 	Quantidade int
 	PrecoExec  float64
+	Moeda      string
+	TaxaCambio float64
 }
 
 func getEnvOrDefault(key, fallback string) string {
@@ -29,10 +31,9 @@ func getEnvOrDefault(key, fallback string) string {
 }
 
 func main() {
-	// 1. Conexão com o banco
 	connStr := os.Getenv("DATABASE_URL")
 	if connStr == "" {
-		dbHost := getEnvOrDefault("DB_HOST", "quantadvisor_pg")
+		dbHost := getEnvOrDefault("DB_HOST", "db")
 		dbPort := getEnvOrDefault("DB_PORT", "5432")
 		dbUser := getEnvOrDefault("DB_USER", "devuser")
 		dbPass := getEnvOrDefault("DB_PASSWORD", "devpassword")
@@ -45,7 +46,6 @@ func main() {
 	}
 	defer db.Close()
 
-	// 2. Busca TODOS os usuários cadastrados
 	rowsUsuarios, err := db.Query("SELECT usuario_id FROM contas_virtuais ORDER BY usuario_id")
 	if err != nil {
 		log.Fatal("❌ Erro ao buscar usuários: ", err)
@@ -58,65 +58,71 @@ func main() {
 	}
 	rowsUsuarios.Close()
 
-	// 3. Prepara a janela de tempo
 	dataInicio, _ := time.Parse("2006-01-02", "2026-06-22")
 	loc, _ := time.LoadLocation("America/Sao_Paulo")
-	
-	// 👇 A CORREÇÃO DE EOD: Define a data final como ONTEM (subtrai 1 dia)
-	dataFim := time.Now().In(loc).AddDate(0, 0, -1)
+	dataFim := time.Now().In(loc)
 
 	precosHistoricos := carregarPrecos(db)
+	dolarRate := 5.08
 
-	// 4. Cria o arquivo SQL automaticamente
-	arquivoSQL, err := os.Create("patch_patrimonio.sql")
-	if err != nil {
-		log.Fatal("❌ Erro ao criar o arquivo SQL: ", err)
-	}
-	defer arquivoSQL.Close()
+	log.Println("🚀 Iniciando Reconstrução do Histórico Patrimonial e Lucro Acumulado...")
 
-	arquivoSQL.WriteString("-- ===========================================================\n")
-	arquivoSQL.WriteString("-- SCRIPT SQL DE RESTAURAÇÃO DE HISTÓRICO PATRIMONIAL (MtM)\n")
-	arquivoSQL.WriteString("-- GERADO AUTOMATICAMENTE PELO MOTOR GOLANG\n")
-	arquivoSQL.WriteString("-- ===========================================================\n\n")
+	registrosInseridos := 0
 
-	log.Println("🚀 Gerando histórico para TODAS as carteiras (Até ontem)...")
-
-	linhasGeradas := 0
-
-	// 5. Loop por todas as carteiras
 	for _, uID := range usuarios {
-		arquivoSQL.WriteString(fmt.Sprintf("-- Reconstruindo Histórico para o Cliente ID: %d\n", uID))
-		arquivoSQL.WriteString(fmt.Sprintf("DELETE FROM historico_patrimonial WHERE usuario_id = %d AND data_fechamento >= '2026-06-22';\n\n", uID))
-
-		// Define saldo inicial inteligente
+		// Define saldo inicial inteligente baseado no perfil da conta
 		saldoInicial := 1000.00
-		
+		if uID == 1 || (uID >= 12 && uID <= 16) {
+			saldoInicial = 5000000.00
+		}
 
 		ordens := carregarOrdens(db, uID)
+		if len(ordens) == 0 {
+			continue
+		}
+
 		caixaLivre := saldoInicial
 		custodia := make(map[string]int)
 		ultimoPreco := make(map[string]float64)
 
-		for d := dataInicio; d.Before(dataFim) || d.Equal(dataFim); d = d.AddDate(0, 0, 1) {
+		inicioCliente := ordens[0].DataHora.In(loc)
+		dataInicioCliente := time.Date(inicioCliente.Year(), inicioCliente.Month(), inicioCliente.Day(), 0, 0, 0, 0, loc)
+		if dataInicioCliente.Before(dataInicio) {
+			dataInicioCliente = dataInicio
+		}
+
+		var ultimoPatrimonio float64 = saldoInicial
+
+		for d := dataInicioCliente; d.Before(dataFim) || d.Equal(dataFim); d = d.AddDate(0, 0, 1) {
 			diaAtualStr := d.Format("2006-01-02")
 			teveOperacaoOuCotacao := false
 
-			// Processa ordens
 			for _, ordem := range ordens {
 				if ordem.DataHora.Format("2006-01-02") == diaAtualStr {
+					fx := ordem.TaxaCambio
+					if fx <= 0 {
+						fx = 1.0
+					}
+					isUS := !strings.ContainsAny(ordem.Ticker, "0123456789") && !strings.HasSuffix(ordem.Ticker, ".SA")
+					if isUS && fx == 1.0 {
+						fx = dolarRate
+					}
+
+					valOperacaoBRL := float64(ordem.Quantidade) * ordem.PrecoExec * fx
+
 					if ordem.Tipo == "COMPRA" {
 						custodia[ordem.Ticker] += ordem.Quantidade
-						caixaLivre -= float64(ordem.Quantidade) * ordem.PrecoExec
+						caixaLivre -= valOperacaoBRL
 						ultimoPreco[ordem.Ticker] = ordem.PrecoExec
 					} else if ordem.Tipo == "VENDA" {
 						custodia[ordem.Ticker] -= ordem.Quantidade
-						caixaLivre += float64(ordem.Quantidade) * ordem.PrecoExec
+						caixaLivre += valOperacaoBRL
+						ultimoPreco[ordem.Ticker] = ordem.PrecoExec
 					}
 					teveOperacaoOuCotacao = true
 				}
 			}
 
-			// Marcação a Mercado
 			valorAcoes := 0.0
 			for ticker, qtd := range custodia {
 				if qtd > 0 {
@@ -127,51 +133,70 @@ func main() {
 					} else {
 						precoFechamento = ultimoPreco[ticker]
 					}
-					valorAcoes += float64(qtd) * precoFechamento
+					isUS := !strings.ContainsAny(ticker, "0123456789") && !strings.HasSuffix(ticker, ".SA")
+					fx := 1.0
+					if isUS {
+						fx = dolarRate
+					}
+					valorAcoes += float64(qtd) * precoFechamento * fx
 				}
 			}
 
 			patrimonioTotal := caixaLivre + valorAcoes
-			lucroAcumulado := patrimonioTotal - saldoInicial
+			lucroDiario := patrimonioTotal - ultimoPatrimonio
+			ultimoPatrimonio = patrimonioTotal
 
-			// Só gera a linha de SQL se a conta já começou a operar
 			if teveOperacaoOuCotacao || patrimonioTotal != saldoInicial {
-				linhaSQL := fmt.Sprintf("INSERT INTO historico_patrimonial (usuario_id, data_fechamento, saldo_caixa, valor_acoes, patrimonio_total, lucro_diario) VALUES (%d, '%s', %.2f, %.2f, %.2f, %.2f);\n", 
-					uID, diaAtualStr, caixaLivre, valorAcoes, patrimonioTotal, lucroAcumulado)
-				
-				arquivoSQL.WriteString(linhaSQL)
-				linhasGeradas++
+				queryUpsert := `
+					INSERT INTO historico_patrimonial (usuario_id, data_fechamento, saldo_caixa, valor_acoes, patrimonio_total, lucro_diario)
+					VALUES ($1, $2, $3, $4, $5, $6)
+					ON CONFLICT (usuario_id, data_fechamento)
+					DO UPDATE SET saldo_caixa = EXCLUDED.saldo_caixa, valor_acoes = EXCLUDED.valor_acoes, patrimonio_total = EXCLUDED.patrimonio_total, lucro_diario = EXCLUDED.lucro_diario;
+				`
+				_, errIns := db.Exec(queryUpsert, uID, diaAtualStr, caixaLivre, valorAcoes, patrimonioTotal, lucroDiario)
+				if errIns != nil {
+					log.Printf("⚠️ Erro ao inserir snapshot para user %d na data %s: %v", uID, diaAtualStr, errIns)
+				} else {
+					registrosInseridos++
+				}
 			}
 		}
-		arquivoSQL.WriteString("\n")
+
+		// Atualiza lucro_acumulado na tabela contas_virtuais
+		lucroAcumuladoFinal := ultimoPatrimonio - saldoInicial
+		queryUpdateConta := `UPDATE contas_virtuais SET lucro_acumulado = $1 WHERE usuario_id = $2`
+		_, errUpd := db.Exec(queryUpdateConta, lucroAcumuladoFinal, uID)
+		if errUpd != nil {
+			log.Printf("⚠️ Erro ao atualizar lucro_acumulado para user %d: %v", uID, errUpd)
+		}
 	}
 
-	fmt.Println("---------------------------------------------------------")
-	log.Printf("✅ SUCESSO! O arquivo 'patch_patrimonio.sql' foi gerado limitando até ontem.")
-	fmt.Println("👉 Para injetar no banco, saia do contêiner e rode o comando:")
-	fmt.Println("docker exec -i quantadvisor_pg psql -U devuser -d devdb < coletor_go/patch_patrimonio.sql")
-	fmt.Println("---------------------------------------------------------")
+	log.Printf("✅ [DATA RECOVERY] Concluído! %d snapshots inseridos em historico_patrimonial e lucro_acumulado atualizado para todas as contas.", registrosInseridos)
 }
 
 func carregarOrdens(db *sql.DB, usuarioID int) []Ordem {
-	query := `SELECT data_hora, ticker, tipo_ordem, quantidade, preco_execucao FROM ordens_executadas WHERE usuario_id = $1 ORDER BY data_hora ASC`
+	query := `SELECT data_hora, ticker, tipo_ordem, quantidade, preco_execucao, COALESCE(moeda, 'BRL'), COALESCE(taxa_cambio_momento, 1.0) FROM ordens_executadas WHERE usuario_id = $1 ORDER BY data_hora ASC`
 	rows, err := db.Query(query, usuarioID)
-	if err != nil { return []Ordem{} }
+	if err != nil {
+		return []Ordem{}
+	}
 	defer rows.Close()
 
 	var ordens []Ordem
 	for rows.Next() {
 		var o Ordem
-		rows.Scan(&o.DataHora, &o.Ticker, &o.Tipo, &o.Quantidade, &o.PrecoExec)
+		rows.Scan(&o.DataHora, &o.Ticker, &o.Tipo, &o.Quantidade, &o.PrecoExec, &o.Moeda, &o.TaxaCambio)
 		ordens = append(ordens, o)
 	}
 	return ordens
 }
 
 func carregarPrecos(db *sql.DB) map[string]map[string]float64 {
-	query := `SELECT ticker_ativo, TO_CHAR(data_hora, 'YYYY-MM-DD'), preco_analisado FROM historico_recomendacoes`
+	query := `SELECT ticker_ativo, TO_CHAR(data_hora, 'YYYY-MM-DD'), AVG(preco_analisado) FROM historico_recomendacoes GROUP BY ticker_ativo, TO_CHAR(data_hora, 'YYYY-MM-DD')`
 	rows, err := db.Query(query)
-	if err != nil { return make(map[string]map[string]float64) }
+	if err != nil {
+		return make(map[string]map[string]float64)
+	}
 	defer rows.Close()
 
 	precos := make(map[string]map[string]float64)
@@ -179,14 +204,20 @@ func carregarPrecos(db *sql.DB) map[string]map[string]float64 {
 		var ticker, data string
 		var preco float64
 		rows.Scan(&ticker, &data, &preco)
-		if precos[ticker] == nil { precos[ticker] = make(map[string]float64) }
+		if precos[ticker] == nil {
+			precos[ticker] = make(map[string]float64)
+		}
 		precos[ticker][data] = preco
 	}
 	return precos
 }
 
 func obterPreco(precos map[string]map[string]float64, ticker string, data string) float64 {
-	if precos == nil || precos[ticker] == nil { return 0.0 }
-	if valor, existe := precos[ticker][data]; existe { return valor }
-	return 0.0 
+	if precos == nil || precos[ticker] == nil {
+		return 0.0
+	}
+	if valor, existe := precos[ticker][data]; existe {
+		return valor
+	}
+	return 0.0
 }

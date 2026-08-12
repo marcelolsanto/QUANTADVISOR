@@ -572,19 +572,36 @@ func Ordem(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.TipoOrdem == "COMPRA" {
-		// 1. O saldo é descontado no bolso (moeda) correto!
-		var queryDescontoSaldo string
+		// 1. Validação de saldo multi-moeda (Alpaca Redis para USD vs DB para BRL)
 		if moedaDaOperacao == "USD" {
-			queryDescontoSaldo = "UPDATE contas_virtuais SET saldo_usd = saldo_usd - $1 WHERE usuario_id = $2 AND saldo_usd >= $1"
-		} else {
-			queryDescontoSaldo = "UPDATE contas_virtuais SET saldo_brl = saldo_brl - $1 WHERE usuario_id = $2 AND saldo_brl >= $1"
-		}
+			var buyingPower float64 = volumeMoedaNativa
+			if database.Rdb != nil {
+				valStr, errRedis := database.Rdb.Get(database.Ctx, "hft:wallet:buying_power").Result()
+				if errRedis == nil && valStr != "" {
+					fmt.Sscanf(valStr, "%f", &buyingPower)
+				} else {
+					_ = database.Conn.QueryRow("SELECT saldo_usd FROM contas_virtuais WHERE usuario_id = $1", req.UsuarioID).Scan(&buyingPower)
+				}
+			} else {
+				_ = database.Conn.QueryRow("SELECT saldo_usd FROM contas_virtuais WHERE usuario_id = $1", req.UsuarioID).Scan(&buyingPower)
+			}
 
-		res, err := tx.Exec(queryDescontoSaldo, volumeMoedaNativa, req.UsuarioID)
-		if err != nil || database.RowsAffected(res) == 0 {
-			tx.Rollback()
-			http.Error(w, fmt.Sprintf(`{"sucesso": false, "erro": "Saldo insuficiente em %s para realizar a compra"}`, moedaDaOperacao), http.StatusPaymentRequired)
-			return
+			if buyingPower < volumeMoedaNativa {
+				tx.Rollback()
+				http.Error(w, fmt.Sprintf(`{"sucesso": false, "erro": "Saldo insuficiente em USD na Alpaca (buying_power: US$ %.2f) para realizar a compra"}`, buyingPower), http.StatusPaymentRequired)
+				return
+			}
+
+			// Desconta saldo_usd da conta virtual sem travar se a Alpaca autorizou via buying_power
+			_, _ = tx.Exec("UPDATE contas_virtuais SET saldo_usd = GREATEST(0, saldo_usd - $1) WHERE usuario_id = $2", volumeMoedaNativa, req.UsuarioID)
+		} else {
+			queryDescontoSaldo := "UPDATE contas_virtuais SET saldo_brl = saldo_brl - $1 WHERE usuario_id = $2 AND saldo_brl >= $1"
+			res, err := tx.Exec(queryDescontoSaldo, volumeMoedaNativa, req.UsuarioID)
+			if err != nil || database.RowsAffected(res) == 0 {
+				tx.Rollback()
+				http.Error(w, `{"sucesso": false, "erro": "Saldo insuficiente em BRL para realizar a compra"}`, http.StatusPaymentRequired)
+				return
+			}
 		}
 
 		// 2. A Custódia é salva em Moeda Nativa (USD/BRL)

@@ -748,16 +748,17 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 		// Separação de Moeda para a Tesouraria
 		precoBaseBRL := pyResp.PrecoAtual
 		moedaAtivo := "BRL"
-		if !strings.ContainsAny(pyResp.Ticker, "0123456789") && !strings.HasSuffix(pyResp.Ticker, ".SA") {
+		isMercadoAmericano := !strings.ContainsAny(pyResp.Ticker, "0123456789") && !strings.HasSuffix(pyResp.Ticker, ".SA")
+		if isMercadoAmericano {
 			precoBaseBRL = pyResp.PrecoAtual * DolarGlobal
 			moedaAtivo = "USD"
 		}
 
 		// 💰 3. VALIDAÇÃO DE CAIXA MULTI-MOEDA (BRL vs USD / Alpaca Redis)
 		saldoMoedaNativa := saldoBRL
-		if moedaAtivo == "USD" {
+		if isMercadoAmericano {
 			saldoMoedaNativa = saldoUSD
-			// Se o ativo for Americano (Alpaca), valida contra a chave Redis 'hft:wallet:buying_power' (saldo sincronizado em USD)
+			// Se o ativo for Americano (Alpaca), consulta EXCLUSIVAMENTE o saldo em Dólar da Alpaca ('hft:wallet:buying_power' no Redis)
 			if database.Rdb != nil {
 				valStr, errRedis := database.Rdb.Get(database.Ctx, "hft:wallet:buying_power").Result()
 				if errRedis == nil && valStr != "" {
@@ -796,22 +797,27 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 		var lucroAcumulado float64
 		_ = database.Conn.QueryRow("SELECT lucro_acumulado FROM contas_virtuais WHERE usuario_id = $1", usuarioID).Scan(&lucroAcumulado)
 
-		var ultimoPatrimonioMarcado float64
-		_ = database.Conn.QueryRow("SELECT patrimonio_total FROM historico_patrimonial WHERE usuario_id = $1 ORDER BY data_fechamento DESC LIMIT 1", usuarioID).Scan(&ultimoPatrimonioMarcado)
+		var highWaterMark float64
+		_ = database.Conn.QueryRow("SELECT COALESCE(MAX(patrimonio_total), 0) FROM historico_patrimonial WHERE usuario_id = $1", usuarioID).Scan(&highWaterMark)
 
-		// Sincronização Dinâmica da High Water Mark: aportes elevam a marca d'água base
-		if patrimonioTotal > ultimoPatrimonioMarcado {
-			ultimoPatrimonioMarcado = patrimonioTotal
+		// Sincronização Dinâmica da High Water Mark: se o patrimônio atual for maior ou igual à High Water Mark (devido a valorização ou aporte/injeção de saldo na Alpaca), atualiza a HWM instantaneamente
+		if patrimonioTotal >= highWaterMark || highWaterMark == 0 {
+			highWaterMark = patrimonioTotal
 		}
 
-		if ultimoPatrimonioMarcado > 0 && patrimonioTotal > 0 {
-			drawdownAtual := (patrimonioTotal / ultimoPatrimonioMarcado) - 1.0
-
-			if sinalExecucao == "COMPRA FORTE" && drawdownAtual <= pisoMaxDrawdown {
-				sinalExecucao = "NEUTRO"
-				log.Printf("🛑 [CIRCUIT BREAKER GLOBAL] Ordem de COMPRA em %s VETADA para User %d. Drawdown de %.2f%% atingiu o limite de %.2f%%. Recomendação visual %s mantida.", pyResp.Ticker, usuarioID, drawdownAtual*100, pisoMaxDrawdown*100, pyResp.Sinal)
-				continue
+		drawdownAtual := 0.0
+		if highWaterMark > 0 {
+			if patrimonioTotal < highWaterMark {
+				drawdownAtual = (patrimonioTotal / highWaterMark) - 1.0
+			} else {
+				drawdownAtual = 0.0
 			}
+		}
+
+		if sinalExecucao == "COMPRA FORTE" && drawdownAtual <= pisoMaxDrawdown {
+			sinalExecucao = "NEUTRO"
+			log.Printf("🛑 [CIRCUIT BREAKER GLOBAL] Ordem de COMPRA em %s VETADA para User %d. Drawdown de %.2f%% atingiu o limite de %.2f%%. Recomendação visual %s mantida.", pyResp.Ticker, usuarioID, drawdownAtual*100, pisoMaxDrawdown*100, pyResp.Sinal)
+			continue
 		}
 		// =========================================================================
 
@@ -928,8 +934,8 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 
 		// 🛒 Execução final da Compra
 		saldoDaOperacaoBRL := saldoBRL
-		if moedaAtivo == "USD" {
-			saldoDaOperacaoBRL = saldoUSD * DolarGlobal
+		if isMercadoAmericano {
+			saldoDaOperacaoBRL = saldoMoedaNativa * DolarGlobal
 		}
 
 		if sinalExecucao == "COMPRA FORTE" && deltaFinanceiro > threshold {
