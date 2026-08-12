@@ -36,11 +36,11 @@ type Client chan []byte
 var (
 	// Dicionário de abas abertas no React
 	Clients = make(map[Client]bool)
-	// Canal por onde entram as cotações novas
-	Broadcast = make(chan []byte)
-	// Canais de controle de conexão
-	Register   = make(chan Client)
-	Unregister = make(chan Client)
+	// Canal por onde entram as cotações novas (Buffered com capacidade para picos de HFT)
+	Broadcast = make(chan []byte, 10000)
+	// Canais de controle de conexão com buffer para evitar bloqueios
+	Register   = make(chan Client, 256)
+	Unregister = make(chan Client, 256)
 )
 
 // StartSSEHub é o coração do sistema. Fica rodando em background no main.go
@@ -64,8 +64,8 @@ func StartSSEHub() {
 				select {
 				case client <- message:
 				default:
-					close(client)
-					delete(Clients, client)
+					// Se o canal do cliente encheu momentaneamente (React/Nginx lento), 
+					// descarta apenas esse tick para aquele cliente em vez de desconectá-lo brutalmente
 				}
 			}
 		}
@@ -92,7 +92,7 @@ func SSEMarketStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. Registra este novo navegador no nosso Hub
-	clientChan := make(Client, 1000) 
+	clientChan := make(Client, 2000) 
 	Register <- clientChan
 
 	// 3. Garante que removemos o cliente quando ele fechar a aba
@@ -1710,8 +1710,25 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	query := "SELECT usuario_id, nome_cliente, senha, COALESCE(role, 'CLIENTE') FROM contas_virtuais WHERE login = $1"
 	err := database.Conn.QueryRow(query, req.Login).Scan(&id, &nome, &senhaDB, &role)
 
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(models.LoginResponse{Sucesso: false, Erro: "Login ou senha incorretos"})
+		return
+	}
+
 	errBcrypt := bcrypt.CompareHashAndPassword([]byte(senhaDB), []byte(req.Senha))
-	if err != nil || errBcrypt != nil {
+	senhaValida := (errBcrypt == nil)
+
+	// Fallback para senhas legadas em texto puro (ex: 'admin', '123456' das sementes do banco)
+	if !senhaValida && senhaDB == req.Senha {
+		senhaValida = true
+		// Auto-upgrade transparente da senha legada para hash bcrypt no banco
+		if hashedBytes, errHash := bcrypt.GenerateFromPassword([]byte(req.Senha), bcrypt.DefaultCost); errHash == nil {
+			_, _ = database.Conn.Exec("UPDATE contas_virtuais SET senha = $1 WHERE usuario_id = $2", string(hashedBytes), id)
+		}
+	}
+
+	if !senhaValida {
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(models.LoginResponse{Sucesso: false, Erro: "Login ou senha incorretos"})
 		return

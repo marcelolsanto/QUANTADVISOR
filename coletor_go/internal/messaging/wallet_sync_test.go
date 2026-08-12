@@ -16,6 +16,7 @@ type MockWalletBroker struct{}
 
 func (m *MockWalletBroker) Connect() error                                { return nil }
 func (m *MockWalletBroker) SubscribeTicker(ticker string) error          { return nil }
+func (m *MockWalletBroker) SubscribeTickers(tickers []string) error       { return nil }
 func (m *MockWalletBroker) PlaceOrder(req models.OrdemRequest) (string, error) { return "mock-id", nil }
 func (m *MockWalletBroker) GetBuyingPower() (float64, error)              { return 150000.00, nil }
 

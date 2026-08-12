@@ -11,6 +11,7 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"quantadvisor/internal/broker"
 	"quantadvisor/internal/database"
 	"quantadvisor/internal/models"
 	"quantadvisor/internal/risk"
@@ -403,10 +404,45 @@ func IniciarCronJob() {
     }
 }
 
+// IsBrazilianAsset identifica se o ticker é oriundo do mercado brasileiro (B3)
+func IsBrazilianAsset(ticker string) bool {
+	t := strings.ToUpper(strings.TrimSpace(ticker))
+	if strings.HasSuffix(t, ".SA") {
+		return true
+	}
+	return strings.ContainsAny(t, "0123456789")
+}
+
+func isBrazilianAsset(ticker string) bool {
+	return IsBrazilianAsset(ticker)
+}
+
 func ExecutarEsteiraSincrona() {
 	var wg sync.WaitGroup
 
-	log.Printf("🚀 [ORQUESTRADOR] Disparando motores de ingestão em Worker Pool para %d ativos...", len(CarteiraMercado))
+	var ativosB3 []string
+	var ativosUSA []string
+
+	for _, ticker := range CarteiraMercado {
+		if isBrazilianAsset(ticker) {
+			ativosB3 = append(ativosB3, ticker)
+		} else {
+			ativosUSA = append(ativosUSA, ticker)
+		}
+	}
+
+	log.Printf("🚀 [ORQUESTRADOR] Disparando roteamento inteligente: %d ativos B3 (Yahoo/BRAPI) | %d ativos EUA (Alpaca)", len(ativosB3), len(ativosUSA))
+
+	for _, tickerUSA := range ativosUSA {
+		log.Printf("📡 [ROTEADOR] %s -> Direcionado para Alpaca (EUA)", tickerUSA)
+		if broker.GlobalAlpacaAdapter != nil {
+			go func(t string) {
+				if err := broker.GlobalAlpacaAdapter.SubscribeTicker(t); err != nil {
+					log.Printf("⚠️ [ALPACA] Erro ao inscrever ativo %s: %v", t, err)
+				}
+			}(tickerUSA)
+		}
+	}
 
 	jobs := make(chan string, len(CarteiraMercado))
 
@@ -416,8 +452,12 @@ func ExecutarEsteiraSincrona() {
 		go func(workerID int) {
 			defer wg.Done()
 			for ticker := range jobs {
+				origem := "Yahoo (B3)"
+				if !isBrazilianAsset(ticker) {
+					origem = "Yahoo (Wall St / USD)"
+				}
+				log.Printf("📡 [ROTEADOR] %s -> Direcionado para %s", ticker, origem)
 				processarGatilhoYahooPython(ticker)
-				
 				time.Sleep(50 * time.Millisecond)
 			}
 		}(w)
@@ -641,13 +681,22 @@ func enviarParaPythonEOperar(ticker string, urlPython string, payload []byte, fo
 		}
 		processarDecisaoTrading(botResp, fonte)
 		
-	} else if err != nil {
-		log.Printf("❌ [GO-CONECTOR] Erro ao decodificar o retorno estruturado de %s: %v", ticker, err)
+	} else {
+		if pyResp.Ticker != "" || ticker != "" {
+			tck := ticker
+			if pyResp.Ticker != "" {
+				tck = pyResp.Ticker
+			}
+			log.Printf("⚠️ [GO-CONECTOR] %s rejeitado/ignorado pelo Python (histórico insuficiente ou ilíquido). Ativando cooldown de 12h.", tck)
+			risk.GlobalCooldown.Bloquear(tck, 12*time.Hour)
+		} else if err != nil {
+			log.Printf("❌ [GO-CONECTOR] Erro ao decodificar o retorno estruturado de %s: %v", ticker, err)
+		}
 	}
 }
 
 func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
-	log.Printf("📊 [MAESTRO AUDITORIA] %s processado via -> %s | Preço: %.2f | Z-Score: %.2f | Sinal: %s",
+	log.Printf("📊 [MAESTRO AUDITORIA] %s processado via -> %s | Preço: %.2f | Z-Score: %.2f | Sinal Recomendado: %s",
 		pyResp.Ticker, fonte, pyResp.PrecoAtual, pyResp.ZScore, pyResp.Sinal)
 
 	if risk.GlobalCooldown.EmCooldown(pyResp.Ticker) { return }
@@ -657,22 +706,25 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 	zScore := pyResp.ZScore
 	varAtual := pyResp.RiscoVar 
 
-	// Ajustes de Kelly baseados no risco
-	if pyResp.Sinal == "COMPRA FORTE" {
+	sinalExecucao := pyResp.Sinal
+	kellyExecucao := pyResp.KellyRecomendado
+
+	// Ajustes de Kelly e risco exclusivos para o fluxo de execução financeira
+	if sinalExecucao == "COMPRA FORTE" {
 		if zScore > 1.5 {
-			pyResp.Sinal = "NEUTRO"
+			sinalExecucao = "NEUTRO"
 		}
 		if zScore < 0 && varAtual > 10.0 {
-			pyResp.KellyRecomendado = pyResp.KellyRecomendado / 3.0
+			kellyExecucao = kellyExecucao / 3.0
 		}
 		if zScore <= -1.5 && varAtual < 5.0 {
-			pyResp.KellyRecomendado = pyResp.KellyRecomendado * 1.5 
+			kellyExecucao = kellyExecucao * 1.5 
 		}
 	}
 
-	if pyResp.Sinal == "COMPRA FORTE" && pyResp.KellyRecomendado <= 0.01 {
+	if sinalExecucao == "COMPRA FORTE" && kellyExecucao <= 0.01 {
 		risk.GlobalCooldown.Bloquear(pyResp.Ticker, 5*time.Minute)
-		pyResp.Sinal = "NEUTRO" 
+		sinalExecucao = "NEUTRO" 
 	}
 
 	rows, err := database.Conn.Query("SELECT usuario_id, saldo_brl, saldo_usd, perfil_risco, piloto_automatico FROM contas_virtuais")
@@ -695,18 +747,27 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 			moedaAtivo = "USD"
 		}
 
-		// 💰 1. VETO DE TESOURARIA MULTIMOEDA (Filtro Anti-Cegueira)
+		// 💰 3. VALIDAÇÃO DE CAIXA MULTI-MOEDA (BRL vs USD / Alpaca Redis)
 		saldoMoedaNativa := saldoBRL
 		if moedaAtivo == "USD" {
 			saldoMoedaNativa = saldoUSD
+			// Se o ativo for Americano (Alpaca), valida contra a chave Redis 'hft:wallet:buying_power' (saldo sincronizado em USD)
+			if database.Rdb != nil {
+				valStr, errRedis := database.Rdb.Get(database.Ctx, "hft:wallet:buying_power").Result()
+				if errRedis == nil && valStr != "" {
+					var bpVal float64
+					if _, errScan := fmt.Sscanf(valStr, "%f", &bpVal); errScan == nil && bpVal > 0 {
+						saldoMoedaNativa = bpVal
+					}
+				}
+			}
 		}
 
-		if pyResp.Sinal == "COMPRA FORTE" {
-			// Se o saldo na moeda específica não compra nem 1 cota, aborta sumariamente.
+		// 💰 2. ISOLAMENTO DO VETO DE TESOURARIA (Bloqueia EXCLUSIVAMENTE a criação da boleta)
+		if sinalExecucao == "COMPRA FORTE" {
 			if saldoMoedaNativa < pyResp.PrecoAtual {
-				pyResp.Sinal = "NEUTRO"
-				log.Printf("💰 [VETO DE TESOURARIA] Compra de %s bloqueada. User %d tem %.2f %s (Insuficiente para cotas de %.2f).", 
-					pyResp.Ticker, usuarioID, saldoMoedaNativa, moedaAtivo, pyResp.PrecoAtual)
+				log.Printf("💰 [VETO DE TESOURARIA] Ordem de COMPRA em %s (User %d) bloqueada por saldo insuficiente em %s (Disponível: %.2f | Preço: %.2f). Recomendação visual %s mantida no Dashboard.", 
+					pyResp.Ticker, usuarioID, moedaAtivo, saldoMoedaNativa, pyResp.PrecoAtual, pyResp.Sinal)
 				continue
 			}
 		}
@@ -797,18 +858,18 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 		}
 
 		if perfilRisco == "Agressivo" && isModoApenasSaida {
-			if pyResp.Sinal == "COMPRA FORTE" {
+			if sinalExecucao == "COMPRA FORTE" {
 				if pyResp.VolumeZScore >= 1.5 || pyResp.ZScore <= -2.0 {
 					log.Printf("🌙 [OVERNIGHT AUTORIZADO] Compra de %s mantida! Fluxo institucional detectado no fechamento.", pyResp.Ticker)
 				} else {
-					pyResp.Sinal = "NEUTRO"
-					log.Printf("🛑 [TRAVA MOC] Sugestão de COMPRA em %s bloqueada (User %d). Pregão em zeragem.", pyResp.Ticker, usuarioID)
+					sinalExecucao = "NEUTRO"
+					log.Printf("🛑 [TRAVA MOC] Ordem de COMPRA em %s bloqueada (User %d). Pregão em zeragem. Recomendação %s mantida visualmente.", pyResp.Ticker, usuarioID, pyResp.Sinal)
 				}
 			}
 		}
 
 		// 🛑 2. MÁQUINA DE ESTADOS: STOP LOSS E TIME STOP ATÔMICO
-		if pyResp.Sinal == "LIQUIDACAO_TOTAL" {
+		if sinalExecucao == "LIQUIDACAO_TOTAL" || pyResp.Sinal == "LIQUIDACAO_TOTAL" {
 			if qtdCustodia > 0 {
 				log.Printf("🛑 [HARD STOP] Ejetando 100%% da posição: %d cotas de %s a mercado (User %d).", int(qtdCustodia), pyResp.Ticker, usuarioID)
 				rotearOrdem(usuarioID, pyResp.Ticker, "VENDA", int(qtdCustodia), pyResp.PrecoAtual, podeExecutar)
@@ -817,7 +878,7 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 		}
 
 		// 🎯 3. MÁQUINA DE ESTADOS: SCALE-OUT NO LUCRO (Loop Fracionado)
-		if pyResp.Sinal == "REALIZACAO_PARCIAL" {
+		if sinalExecucao == "REALIZACAO_PARCIAL" || pyResp.Sinal == "REALIZACAO_PARCIAL" {
 			if qtdCustodia > 0 {
 				// Fatiando em 33% por operação
 				fracaoVenda := 0.33
@@ -855,7 +916,7 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 			}
 		}
 
-		if pyResp.Sinal == "NEUTRO" {
+		if sinalExecucao == "NEUTRO" {
 			continue
 		}
 
@@ -865,7 +926,7 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 			saldoDaOperacaoBRL = saldoUSD * DolarGlobal
 		}
 
-		if pyResp.Sinal == "COMPRA FORTE" && deltaFinanceiro > threshold {
+		if sinalExecucao == "COMPRA FORTE" && deltaFinanceiro > threshold {
 			if deltaFinanceiro > saldoDaOperacaoBRL {
 				deltaFinanceiro = saldoDaOperacaoBRL
 			}
@@ -877,7 +938,7 @@ func processarDecisaoTrading(pyResp models.PythonResponse, fonte string) {
 					rotearOrdem(usuarioID, pyResp.Ticker, "COMPRA", loteCompra, pyResp.PrecoAtual, podeExecutar)
 				}
 			}
-		} else if pyResp.Sinal == "ALERTA DE VENDA" && deltaFinanceiro < -threshold {
+		} else if (sinalExecucao == "ALERTA DE VENDA" || pyResp.Sinal == "ALERTA DE VENDA") && deltaFinanceiro < -threshold {
 			// Fallback para o Alerta de Venda Clássico
 			loteVenda := int(math.Floor(math.Abs(deltaFinanceiro) / precoBaseBRL))
 			if qtdCustodia > 0 && loteVenda > 0 {

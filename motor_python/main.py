@@ -257,7 +257,7 @@ def processar_pipeline_quantitativo(ticker: str, fonte: str, dados_crus, taxa_se
         saldo_brl = 0.0
 
     # Identificação da Moeda e Bolsa do Ativo
-    eh_b3 = ticker.endswith(".SA") or ticker.endswith(".SAO")
+    eh_b3 = ticker.endswith(".SA") or ticker.endswith(".SAO") or any(char.isdigit() for char in ticker)
     moeda_ativo = "BRL" if eh_b3 else "USD"
     saldo_disponivel = saldo_brl if eh_b3 else saldo_usd
 

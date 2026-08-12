@@ -25,6 +25,10 @@ func (m *MockBrokerAdapter) SubscribeTicker(ticker string) error {
 	return nil
 }
 
+func (m *MockBrokerAdapter) SubscribeTickers(tickers []string) error {
+	return nil
+}
+
 func (m *MockBrokerAdapter) GetBuyingPower() (float64, error) {
 	return 100000.0, nil
 }
