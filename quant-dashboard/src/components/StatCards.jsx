@@ -1,6 +1,7 @@
 
 import { theme } from '../theme';
 import { StatCardsSkeleton } from './SkeletonLoader';
+import { getSinalVisual } from '../utils/sinal';
 
 export const StatCards = ({ data, perfilUsuario, loading = false }) => {
   if (loading || !data || data.length === 0) {
@@ -8,9 +9,7 @@ export const StatCards = ({ data, perfilUsuario, loading = false }) => {
   }
 
   const totalOportunidades = data.filter(d => {
-    const sinalAtual = d.sinais_perfil && perfilUsuario 
-      ? d.sinais_perfil[perfilUsuario] 
-      : d.sinal;
+    const sinalAtual = getSinalVisual(d, perfilUsuario);
     return sinalAtual === 'COMPRA FORTE';
   }).length;
 

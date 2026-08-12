@@ -33,8 +33,9 @@ export const MtMTable = memo(({ data, usuarioId, defaultPerfil, nomeUsuario }) =
     return data.filter(row => {
       const nomeAtivo = row.ativo || row.ticker || '';
       const isEstrangeiro = !/\d/.test(nomeAtivo) && !nomeAtivo.endsWith('.SA');
+      const sinalVisual = getSinalVisual(row, perfilUsuario);
 
-      const matchSinal = filterSinal === 'TODOS' || (row.sinais_perfil && row.sinais_perfil[perfilUsuario] === filterSinal);
+      const matchSinal = filterSinal === 'TODOS' || sinalVisual === filterSinal;
       const matchTicker = nomeAtivo.toLowerCase().includes(buscaTicker.toLowerCase());
       
       let matchMoeda = true;
@@ -49,8 +50,8 @@ export const MtMTable = memo(({ data, usuarioId, defaultPerfil, nomeUsuario }) =
     let sortableItems = [...filteredData];
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
-        let valA = sortConfig.key === 'sinal' ? (a.sinais_perfil ? a.sinais_perfil[perfilUsuario] : a.sinal) : (a[sortConfig.key] ?? '');
-        let valB = sortConfig.key === 'sinal' ? (b.sinais_perfil ? b.sinais_perfil[perfilUsuario] : b.sinal) : (b[sortConfig.key] ?? '');
+        let valA = sortConfig.key === 'sinal' ? getSinalVisual(a, perfilUsuario) : (a[sortConfig.key] ?? '');
+        let valB = sortConfig.key === 'sinal' ? getSinalVisual(b, perfilUsuario) : (b[sortConfig.key] ?? '');
         if (typeof valA === 'string' || typeof valB === 'string') {
           return sortConfig.direction === 'ascending' ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
         }
@@ -135,7 +136,7 @@ export const MtMTable = memo(({ data, usuarioId, defaultPerfil, nomeUsuario }) =
           
           <tbody>
             {sortedData.map((row, index) => {
-              const sinalAtual = row.sinais_perfil ? row.sinais_perfil[perfilUsuario] : (row.sinal || 'NEUTRO');
+              const sinalAtual = getSinalVisual(row, perfilUsuario);
               const isCompra = sinalAtual === 'COMPRA FORTE';
               const isVenda = sinalAtual === 'ALERTA DE VENDA';
 

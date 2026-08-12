@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { subscribeToMarket, subscribeToConnectionStatus } from '../services/stream.js';
 import { theme } from '../theme';
+import { getSinalVisual } from '../utils/sinal';
 
-export const LiveTerminal = ({ perfilUsuario = 'Arrojado' }) => {
+export const LiveTerminal = ({ perfilUsuario = 'Agressivo' }) => {
   const [logs, setLogs] = useState([]);
   const [conectado, setConectado] = useState(false);
   
@@ -20,9 +21,7 @@ export const LiveTerminal = ({ perfilUsuario = 'Arrojado' }) => {
     const unsubMarket = subscribeToMarket((pacote) => {
       const timestamp = new Date().toLocaleTimeString('pt-BR', { hour12: false });
       
-      const sinalDinamico = (pacote.sinais_perfil && pacote.sinais_perfil[perfilUsuario]) 
-        ? pacote.sinais_perfil[perfilUsuario] 
-        : (pacote.sinal || 'NEUTRO');
+      const sinalDinamico = getSinalVisual(pacote, perfilUsuario);
 
       const novoLog = {
         id: Date.now() + Math.random(),

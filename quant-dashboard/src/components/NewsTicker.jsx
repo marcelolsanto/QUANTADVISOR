@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import api, { getAuditoria, getHistorico } from '../services/api';
 import { theme } from '../theme';
 import { subscribeToMarket } from "../services/stream";
+import { getSinalVisual } from '../utils/sinal';
 
 // 🌍 FUNÇÃO AUXILIAR DE MOEDA
 const formatarMoedaNativa = (valor, ticker = '') => {
@@ -13,8 +14,9 @@ const formatarMoedaNativa = (valor, ticker = '') => {
   }).format(Number(valor) || 0);
 };
 
-export const NewsTicker = ({ usuarioId, perfilUsuario = 'Arrojado' }) => {
+export const NewsTicker = ({ usuarioId, perfilUsuario = 'Agressivo' }) => {
   const [manchetes, setManchetes] = useState([]);
+  const [indiceAtual, setIndiceAtual] = useState(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -220,9 +222,7 @@ export const NewsTicker = ({ usuarioId, perfilUsuario = 'Arrojado' }) => {
     // 6. [IA GATILHO] Stream SSE (Torre Central)
     // ==============================================================
     const unsubMarket = subscribeToMarket((pacote) => {
-      const sinalDinamico = (pacote.sinais_perfil && pacote.sinais_perfil[perfilUsuario]) 
-        ? pacote.sinais_perfil[perfilUsuario] 
-        : (pacote.sinal || 'NEUTRO');
+      const sinalDinamico = getSinalVisual(pacote, perfilUsuario);
 
       if (sinalDinamico === 'COMPRA FORTE' || sinalDinamico === 'ALERTA DE VENDA') {
         if (isMounted) {

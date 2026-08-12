@@ -2,21 +2,22 @@
 import React, { useState, useMemo, memo } from 'react';
 import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { theme } from '../theme';
+import { getSinalVisual } from '../utils/sinal';
 
-export const DashboardChart = memo(({ data, perfilUsuario }) => {
+export const DashboardChart = memo(({ data, perfilUsuario = 'Agressivo' }) => {
   
   // 1. Estado que controla o filtro selecionado
-  const [filtroSinal, setFiltroSinal] = useState('COMPRA FORTE');
+  const [filtroSinal, setFiltroSinal] = useState('TODOS');
 
   // 2. Filtro e Formatação unificados no useMemo para máxima performance
   const dadosProcessados = useMemo(() => {
     if (!data) return [];
     
-    // 1. Filtra pelo sinal do perfil
+    // 1. Filtra pelo sinal do perfil usando getSinalVisual
     const filtrados = filtroSinal === 'TODOS' 
       ? data 
       : data.filter(item => {
-          const sinal = item.sinais_perfil ? item.sinais_perfil[perfilUsuario] : item.sinal;
+          const sinal = getSinalVisual(item, perfilUsuario);
           return sinal === filtroSinal;
         });
 
